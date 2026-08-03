@@ -1,3 +1,6 @@
+import { TEMPLATES } from '@/data/templates'
+import { THEMES } from '@/lib/theme'
+
 /**
  * Offres réellement disponibles aujourd'hui. Tant qu'il n'existe ni compte ni
  * encaissement en ligne, la plateforme est intégralement gratuite et la seule
@@ -201,9 +204,14 @@ export const FAQ = [
   },
 ]
 
+/**
+ * Chiffres annoncés sur la page d'accueil. Les deux dénombrements sont
+ * calculés à partir des données elles-mêmes : ils étaient écrits à la main et
+ * annonçaient encore quatre modèles et onze palettes bien après leur arrivée.
+ */
 export const STATS = [
-  { value: '4', label: 'modèles professionnels' },
+  { value: String(TEMPLATES.length), label: 'modèles professionnels' },
   { value: '10 min', label: 'pour un CV complet' },
   { value: 'A4', label: 'export PDF fidèle' },
-  { value: '11', label: 'palettes de couleurs' },
+  { value: String(THEMES.length), label: 'palettes de couleurs' },
 ]

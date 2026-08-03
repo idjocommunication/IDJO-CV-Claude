@@ -10,10 +10,15 @@ import { TEMPLATES } from '@/data/templates'
 import type { CvData } from '@/lib/types'
 
 /**
- * Carrousel de modèles de CV — même chorégraphie que la référence
- * (rôles centre / gauche / droite / arrière, transitions 650 ms
- * cubic-bezier(0.4, 0, 0.2, 1)), avec des feuilles A4 à la place des figurines
- * et la charte monochrome blanc / noir / gris.
+ * Carrousel de modèles de CV, en profondeur.
+ *
+ * Toutes les feuilles occupent la même case ; c'est `transform` seul qui les
+ * écarte, les incline et les réduit selon leur distance au centre — le
+ * navigateur compose alors le mouvement sans refaire la mise en page, ce qui
+ * garde le défilement fluide même avec huit modèles rendus en vrai.
+ *
+ * Une seule feuille est mise en avant : celle du centre est à taille pleine et
+ * nette, les autres reculent, rapetissent et se brouillent par paliers.
  */
 
 const DURATION = 650
@@ -22,10 +27,10 @@ const TRANSITION = [
   `transform ${DURATION}ms ${EASE}`,
   `filter ${DURATION}ms ${EASE}`,
   `opacity ${DURATION}ms ${EASE}`,
-  `left ${DURATION}ms ${EASE}`,
-  `height ${DURATION}ms ${EASE}`,
-  `bottom ${DURATION}ms ${EASE}`,
 ].join(', ')
+
+/** Nombre de feuilles visibles de chaque côté du centre. */
+const VOISINES = 2
 
 const SLIDES = TEMPLATES.map((template) => ({
   template,
@@ -38,8 +43,6 @@ const SLIDES = TEMPLATES.map((template) => ({
     },
   } as CvData,
 }))
-
-type Role = 'center' | 'left' | 'right' | 'back'
 
 export function HeroCarousel() {
   const [activeIndex, setActiveIndex] = useState(0)
@@ -108,14 +111,18 @@ export function HeroCarousel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const roles = useMemo<Record<number, Role>>(() => {
+  /**
+   * Écart signé de chaque feuille au centre, le plus court des deux sens :
+   * c'est lui qui dicte la position, l'inclinaison et la taille.
+   */
+  const ecarts = useMemo(() => {
     const n = SLIDES.length
-    return {
-      [activeIndex]: 'center',
-      [(activeIndex + n - 1) % n]: 'left',
-      [(activeIndex + 1) % n]: 'right',
-      [(activeIndex + 2) % n]: 'back',
-    }
+    return SLIDES.map((_, index) => {
+      let d = index - activeIndex
+      if (d > n / 2) d -= n
+      if (d < -n / 2) d += n
+      return d
+    })
   }, [activeIndex])
 
   const active = SLIDES[activeIndex]
@@ -143,30 +150,12 @@ export function HeroCarousel() {
           aria-hidden
         />
 
-        {/* 2. Titre fantôme — c'est aussi le seul titre de niveau 1 de la page. */}
-        <h1
-          className="pointer-events-none absolute inset-x-0 flex select-none items-center justify-center"
-          style={{ zIndex: 2, top: '17%' }}
-        >
-          <span
-            aria-hidden
-            className="font-display"
-            style={{
-              fontSize: 'clamp(72px, 22vw, 320px)',
-              fontWeight: 900,
-              color: '#FFFFFF',
-              lineHeight: 1,
-              textTransform: 'uppercase',
-              letterSpacing: '-0.02em',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            IDJÔ CV
-          </span>
-          <span className="sr-only">
-            IDJÔ CV — modèles de CV professionnels et lettre de motivation pour la Côte d’Ivoire et
-            l’Afrique francophone
-          </span>
+        {/* 2. Titre de la page. Il ne s'affiche plus en fond derrière les
+            feuilles — la scène reste au CV — mais reste le seul titre de
+            niveau 1, lu par les moteurs et les lecteurs d'écran. */}
+        <h1 className="sr-only">
+          IDJÔ CV — modèles de CV professionnels et lettre de motivation pour la Côte d’Ivoire et
+          l’Afrique francophone
         </h1>
 
         {/* 3. Marque */}
@@ -197,18 +186,24 @@ export function HeroCarousel() {
         />
 
         {/* 5. Carrousel */}
-        <div className="absolute inset-0" style={{ zIndex: 3 }}>
+        <div
+          className="absolute inset-0"
+          style={{ zIndex: 3, perspective: 1800, perspectiveOrigin: '50% 55%' }}
+        >
           {SLIDES.map((slide, index) => {
-            const role = roles[index] ?? 'back'
-            const style = roleStyle(role, isMobile, isTablet)
+            const ecart = ecarts[index]
+            const role = ecart === 0 ? 'center' : 'cote'
+            const style = styleFeuille(ecart, isMobile, isTablet)
             return (
               <div
                 key={slide.template.id}
+                aria-hidden={Math.abs(ecart) > VOISINES}
                 style={{
                   position: 'absolute',
                   aspectRatio: `${A4_WIDTH} / ${A4_HEIGHT}`,
                   transition: TRANSITION,
                   willChange: 'transform, filter, opacity',
+                  transformStyle: 'preserve-3d',
                   ...style,
                 }}
               >
@@ -243,23 +238,13 @@ export function HeroCarousel() {
           })}
         </div>
 
-        {/* 6. Texte + navigation */}
+        {/* 6. Navigation. Le nom du modèle et sa description ne s'affichent
+            plus ici : la feuille du centre parle d'elle-même, et son nom reste
+            porté par le titre du lien et le texte pour lecteurs d'écran. */}
         <div
           className="absolute bottom-6 left-4 sm:bottom-16 sm:left-12 lg:left-20"
           style={{ zIndex: 60, maxWidth: 340 }}
         >
-          <p
-            className="mb-2 text-base font-bold uppercase tracking-widest text-white sm:mb-3 sm:text-[22px]"
-            style={{ letterSpacing: '0.02em' }}
-          >
-            Modèle {active.template.name}
-          </p>
-          <p
-            className="mb-4 hidden text-xs text-white lg:mb-5 lg:block lg:text-sm"
-            style={{ lineHeight: 1.6, opacity: 0.85 }}
-          >
-            {active.template.description}
-          </p>
           <p className="mb-4 text-[11px] uppercase tracking-[0.16em] text-white/70 sm:mb-5">
             Cliquez sur un modèle pour l’ouvrir
           </p>
@@ -338,7 +323,7 @@ function SheetThumb({ data, highlight }: { data: CvData; highlight: boolean }) {
   )
 }
 
-type RoleStyle = {
+type StyleFeuille = {
   transform: string
   filter: string
   opacity: number
@@ -346,54 +331,52 @@ type RoleStyle = {
   left: string
   height: string
   bottom: string
+  pointerEvents: 'auto' | 'none'
 }
 
 /**
- * Positions des feuilles. Sous 1024 px, la feuille centrale remonte et rétrécit
- * pour ne pas recouvrir le texte posé en bas à gauche.
+ * Place une feuille selon son écart au centre.
+ *
+ * Toutes gardent la même case — même `left`, même `height`, même `bottom` — et
+ * seul `transform` les déplace : le décalage latéral est exprimé en pourcentage
+ * de leur propre largeur, donc il suit la taille de l'écran sans calcul.
+ * L'inclinaison et le recul en Z creusent la profondeur ; l'échelle et le flou
+ * font que la feuille du centre est la seule à s'imposer.
+ *
+ * Sous 1024 px, la scène remonte et rétrécit pour ne pas recouvrir le texte
+ * posé en bas à gauche.
  */
-function roleStyle(role: Role, isMobile: boolean, isTablet: boolean): RoleStyle {
-  switch (role) {
-    case 'center':
-      return {
-        transform: 'translateX(-50%) scale(1)',
-        filter: 'none',
-        opacity: 1,
-        zIndex: 20,
-        left: '50%',
-        height: isMobile ? '52%' : isTablet ? '54%' : '62%',
-        bottom: isMobile ? '25%' : isTablet ? '31%' : '26%',
-      }
-    case 'left':
-      return {
-        transform: 'translateX(-50%) scale(1)',
-        filter: 'blur(2px)',
-        opacity: 0.85,
-        zIndex: 10,
-        left: isMobile ? '10%' : '20%',
-        height: isMobile ? '28%' : isTablet ? '32%' : '40%',
-        bottom: isMobile ? '37%' : isTablet ? '42%' : '37%',
-      }
-    case 'right':
-      return {
-        transform: 'translateX(-50%) scale(1)',
-        filter: 'blur(2px)',
-        opacity: 0.85,
-        zIndex: 10,
-        left: isMobile ? '90%' : '80%',
-        height: isMobile ? '28%' : isTablet ? '32%' : '40%',
-        bottom: isMobile ? '37%' : isTablet ? '42%' : '37%',
-      }
-    case 'back':
-    default:
-      return {
-        transform: 'translateX(-50%) scale(1)',
-        filter: 'blur(4px)',
-        opacity: 1,
-        zIndex: 5,
-        left: '50%',
-        height: isMobile ? '24%' : isTablet ? '26%' : '32%',
-        bottom: isMobile ? '39%' : isTablet ? '45%' : '41%',
-      }
+function styleFeuille(ecart: number, isMobile: boolean, isTablet: boolean): StyleFeuille {
+  const distance = Math.abs(ecart)
+  const sens = Math.sign(ecart)
+  const auCentre = distance === 0
+  // Au-delà des voisines affichées, la feuille attend hors champ : elle garde
+  // la même transition et revient donc en glissant, jamais en apparaissant.
+  const cachee = distance > VOISINES
+  const rang = Math.min(distance, VOISINES + 1)
+
+  // Écart latéral, en part de la largeur de la feuille : les voisines se
+  // resserrent à mesure qu'elles s'éloignent, ce qui évite un alignement plat.
+  const pas = isMobile ? 52 : isTablet ? 62 : 70
+  const decalage = sens * (pas * rang - 8 * Math.max(0, rang - 1))
+
+  const echelle = auCentre ? 1 : Math.max(0.3, 1 - 0.32 * rang)
+  const recul = -220 * rang
+  const inclinaison = -sens * Math.min(22, 15 * rang)
+
+  return {
+    transform: [
+      `translateX(calc(-50% + ${decalage}%))`,
+      `translateZ(${recul}px)`,
+      `rotateY(${inclinaison}deg)`,
+      `scale(${echelle})`,
+    ].join(' '),
+    filter: auCentre ? 'none' : `blur(${Math.min(5, 2.2 * rang)}px)`,
+    opacity: cachee ? 0 : auCentre ? 1 : Math.max(0.3, 0.82 - 0.3 * (rang - 1)),
+    zIndex: 20 - rang,
+    left: '50%',
+    height: isMobile ? '52%' : isTablet ? '54%' : '62%',
+    bottom: isMobile ? '25%' : isTablet ? '31%' : '26%',
+    pointerEvents: cachee ? 'none' : 'auto',
   }
 }

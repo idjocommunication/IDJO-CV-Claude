@@ -1,0 +1,178 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --a4-width: 794px; /* 210mm @ 96dpi */
+  --a4-height: 1123px; /* 297mm @ 96dpi */
+}
+
+@layer base {
+  * {
+    @apply border-cloud-300;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-white text-ink antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    @apply bg-azur-600 text-white;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-azur-500 ring-offset-2 ring-offset-white;
+  }
+
+  /* Les ancres du menu de sections s'arrêtent sous l'en-tête. */
+  section[id],
+  div[id^='section-'] {
+    scroll-margin-top: 88px;
+  }
+}
+
+@layer components {
+  .container-content {
+    @apply mx-auto w-full max-w-content px-5 sm:px-8;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-muted;
+  }
+
+  .title-xl {
+    @apply text-4xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-5xl lg:text-6xl;
+  }
+
+  .title-lg {
+    @apply text-3xl font-bold leading-[1.1] tracking-[-0.025em] sm:text-4xl;
+  }
+
+  .prose-muted {
+    @apply text-[15px] leading-relaxed text-ink-muted sm:text-base;
+  }
+
+  .hairline {
+    @apply h-px w-full bg-cloud-300;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-cloud-400 bg-white px-3 py-2.5 text-sm text-ink
+      transition-colors placeholder:text-ink-muted/60 hover:border-azur-300
+      focus:border-azur-500 focus:outline-none focus:ring-1 focus:ring-azur-500;
+  }
+
+  /* Carte de verre translucide, motif dominant de la référence. */
+  .glass {
+    @apply rounded-2xl border border-white/[.12] bg-white/[.06] backdrop-blur-md;
+  }
+}
+
+@layer utilities {
+  .grain {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+    background-repeat: repeat;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Feuille A4 : rendu écran + impression / export PDF                */
+/* ---------------------------------------------------------------- */
+
+.cv-sheet {
+  width: var(--a4-width);
+  min-height: var(--a4-height);
+  background: #ffffff;
+  color: #0a0a0a;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Copie destinée à l'impression : rendue hors écran, seule visible en PDF. */
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 210mm;
+    background: #fff !important;
+  }
+
+  .no-print,
+  .screen-only {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-only .cv-sheet {
+    width: 210mm;
+    min-height: 297mm;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+
+  /* Un CV plus long qu'une page se répartit sur plusieurs feuilles ; les blocs
+     ci-dessous ne doivent jamais être coupés en deux au passage. */
+
+  .cv-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Chaque document part sur sa propre page. */
+  .print-doc + .print-doc {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* `data-print` (posé par `printDocument`) choisit le document imprimé. */
+  body[data-print='cv'] .print-doc-lettre,
+  body[data-print='lettre'] .print-doc-cv {
+    display: none !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

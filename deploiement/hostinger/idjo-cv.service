@@ -1,0 +1,51 @@
+# Service systemd du site IDJÔ CV sur un VPS Hostinger.
+#
+# Installation :
+#   sudo cp deploiement/hostinger/idjo-cv.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now idjo-cv
+#
+# Journal : journalctl -u idjo-cv -f
+
+[Unit]
+Description=IDJÔ CV — plateforme de création de CV
+After=network.target
+# Décommentez si la base PostgreSQL tourne sur la même machine.
+# After=network.target postgresql.service
+# Wants=postgresql.service
+
+[Service]
+Type=simple
+User=idjo
+Group=idjo
+WorkingDirectory=/var/www/idjo-cv/courant
+
+# Le build « standalone » embarque le serveur et ses dépendances : il démarre
+# sans node_modules à côté.
+ExecStart=/usr/bin/node server.js
+
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+# Secrets et réglages : fichier lisible par le seul utilisateur du service
+# (chmod 600). Voir .env.example pour la liste des variables.
+EnvironmentFile=/var/www/idjo-cv/partage/.env
+
+Restart=always
+RestartSec=5
+# Une rafale d'échecs au démarrage ne doit pas faire abandonner systemd.
+StartLimitBurst=0
+
+# Le service n'a besoin d'écrire nulle part en dehors de son dossier.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/idjo-cv
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=idjo-cv
+
+[Install]
+WantedBy=multi-user.target

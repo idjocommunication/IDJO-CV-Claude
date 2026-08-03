@@ -1,0 +1,96 @@
+// Schéma PostgreSQL d'IDJÔ CV.
+// La plateforme fonctionne sans base de données (sauvegarde locale) ;
+// la base sert à la synchronisation multi-appareils et à la facturation.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  phone     String?
+  city      String?
+  plan      Plan     @default(DECOUVERTE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Document[]
+  payments  Payment[]
+
+  @@map("users")
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  title     String   @default("Mon CV")
+  template  String   @default("abidjan")
+  /// Contenu complet du CV, conforme au type CvData côté application.
+  data      Json
+  userId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([updatedAt])
+  @@map("documents")
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  userId      String
+  plan        Plan
+  amountXof   Int
+  method      PaymentMethod
+  status      PaymentStatus @default(PENDING)
+  reference   String        @unique
+  createdAt   DateTime      @default(now())
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("payments")
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("contact_messages")
+}
+
+enum Plan {
+  DECOUVERTE
+  PRO
+  ACCOMPAGNEMENT
+}
+
+enum PaymentMethod {
+  ORANGE_MONEY
+  MTN_MOMO
+  MOOV_MONEY
+  WAVE
+  CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}

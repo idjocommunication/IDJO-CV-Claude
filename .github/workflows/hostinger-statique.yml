@@ -1,0 +1,77 @@
+name: Export statique pour Hostinger
+
+# Construit le site et publie le résultat sur la branche « hostinger », que
+# l'hébergement mutualisé récupère ensuite (hPanel → Git → Déployer, ou un
+# simple `git pull` par SSH). L'hébergement mutualisé ne sait pas exécuter
+# npm : c'est donc ici que le build a lieu, une fois pour toutes.
+#
+# Cette branche ne contient que le site construit — jamais le code source.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Deux mises en ligne à la suite ne doivent pas se marcher dessus.
+concurrency:
+  group: hostinger-statique
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Les variables NEXT_PUBLIC_* sont figées dans le JavaScript livré : ce
+      # sont donc des réglages publics, pas des secrets. Renseignez-les dans
+      # Settings → Secrets and variables → Actions → Variables.
+      - name: Construire l'export statique
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_CONTACT_EMAIL: ${{ vars.NEXT_PUBLIC_CONTACT_EMAIL }}
+          NEXT_PUBLIC_CONTACT_PHONE: ${{ vars.NEXT_PUBLIC_CONTACT_PHONE }}
+          NEXT_PUBLIC_WHATSAPP: ${{ vars.NEXT_PUBLIC_WHATSAPP }}
+          NEXT_PUBLIC_LEGAL_NAME: ${{ vars.NEXT_PUBLIC_LEGAL_NAME }}
+          NEXT_PUBLIC_HOST_NAME: ${{ vars.NEXT_PUBLIC_HOST_NAME }}
+        run: npm run build:statique
+
+      - name: Publier sur la branche hostinger
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Une branche orpheline : elle ne porte que le site construit, et son
+          # historique est réécrit à chaque mise en ligne pour ne pas grossir.
+          rm -rf /tmp/publication
+          mkdir /tmp/publication
+          cp -a out/. /tmp/publication/
+          # .htaccess commence par un point : cp -a le prend, mais on vérifie.
+          test -f /tmp/publication/.htaccess
+
+          cd /tmp/publication
+          git init -q -b hostinger
+          git add -A
+          git commit -q -m "Site construit depuis ${GITHUB_SHA::7}"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" hostinger
+
+      - name: Récapitulatif
+        run: |
+          {
+            echo "### Export statique publié"
+            echo ""
+            echo "Branche : \`hostinger\` — $(find out -type f | wc -l) fichiers."
+            echo ""
+            echo "Sur Hostinger : hPanel → Site web → Git → **Déployer**."
+          } >> "$GITHUB_STEP_SUMMARY"

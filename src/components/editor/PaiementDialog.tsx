@@ -10,17 +10,22 @@ import {
   Mail,
   MailCheck,
   ShieldCheck,
+  Smartphone,
   X,
 } from 'lucide-react'
 import { Field, TextInput } from '@/components/editor/fields'
 import { useCvStore } from '@/lib/store'
 import {
+  FORFAITS,
+  FORFAIT_PAR_DEFAUT,
   MOYENS,
-  PAIEMENT,
   dateLisible,
   enregistrerAcces,
+  forfaitParId,
   prixLisible,
   type DocumentPayant,
+  type Forfait,
+  type Fournisseur,
 } from '@/lib/paiement'
 import {
   dernierEmail,
@@ -67,9 +72,14 @@ export function TelechargementDialog({
   /** L'envoi par e-mail est-il actif sur ce site ? `null` tant qu'on l'ignore. */
   const [envoiActif, setEnvoiActif] = useState<boolean | null>(null)
   const [form, setForm] = useState({ nom: '', telephone: '', email: '' })
+  /** Encaisseurs branchés sur ce site, tels que le serveur les déclare. */
+  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
+  const [forfaits, setForfaits] = useState<Forfait[]>(FORFAITS)
+  const [forfaitChoisi, setForfaitChoisi] = useState(FORFAIT_PAR_DEFAUT)
   const panneau = useRef<HTMLDivElement>(null)
 
   const doitPayer = !autorise
+  const forfait = forfaitParId(forfaitChoisi)
 
   // Pré-remplissage : ce que le client a déjà saisi dans son CV.
   useEffect(() => {
@@ -88,6 +98,23 @@ export function TelechargementDialog({
     }
   }, [])
 
+  // Ce que le site sait encaisser : la réponse ne contient aucune clé, juste
+  // les forfaits et les encaisseurs à proposer.
+  useEffect(() => {
+    let vivant = true
+    void fetch('/api/paiement/initier')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((offre: { fournisseurs?: Fournisseur[]; forfaits?: Forfait[] } | null) => {
+        if (!vivant || !offre) return
+        if (offre.fournisseurs?.length) setFournisseurs(offre.fournisseurs)
+        if (offre.forfaits?.length) setForfaits(offre.forfaits)
+      })
+      .catch(() => undefined)
+    return () => {
+      vivant = false
+    }
+  }, [])
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -95,11 +122,14 @@ export function TelechargementDialog({
   }, [onClose])
 
   const emailValide = /.+@.+\..+/.test(form.email.trim())
-  const complet = doitPayer
-    ? emailValide && form.nom.trim().length >= 2 && form.telephone.replace(/\D/g, '').length >= 8
-    : emailValide
+  const identiteComplete = emailValide && form.nom.trim().length >= 2
+  const telephoneComplet = form.telephone.replace(/\D/g, '').length >= 8
+  /** La carte bancaire ne demande pas de numéro de téléphone. */
+  const complet = (fournisseur: Fournisseur) =>
+    fournisseur === 'stripe' ? identiteComplete : identiteComplete && telephoneComplet
+  const pretAValider = doitPayer ? fournisseurs.some(complet) : emailValide
 
-  const payer = async () => {
+  const payer = async (fournisseur: Fournisseur) => {
     setEtape('redirection')
     setErreur('')
     // L'adresse survit à l'aller-retour : au retour, le document part tout seul.
@@ -114,6 +144,8 @@ export function TelechargementDialog({
           telephone: form.telephone.trim(),
           email: form.email.trim(),
           document: cible,
+          fournisseur,
+          forfait: forfaitChoisi,
         }),
       })
       const json = (await response.json()) as { url?: string; reference?: string; error?: string }
@@ -192,7 +224,7 @@ export function TelechargementDialog({
             </h2>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
               {doitPayer
-                ? `${prixLisible()} — ${PAIEMENT.dureeJours} jours de téléchargements illimités, CV et lettre compris.`
+                ? `${prixLisible(forfait.prix)} — ${forfait.dureeJours} jour${forfait.dureeJours > 1 ? 's' : ''} de téléchargements illimités, CV et lettre compris.`
                 : 'Indiquez l’adresse e-mail sur laquelle vous voulez recevoir votre document.'}
             </p>
           </div>
@@ -242,21 +274,58 @@ export function TelechargementDialog({
             <>
               {doitPayer ? (
                 <>
-                  <div className="mb-5 flex flex-wrap gap-2">
-                    {MOYENS.map((moyen) => (
-                      <span
-                        key={moyen.id}
-                        className="inline-flex items-center gap-2 rounded-full border border-cloud-400 bg-white px-3 py-1.5 text-[12px] font-semibold text-ink"
-                      >
+                  <fieldset className="mb-5">
+                    <legend className="eyebrow mb-2.5">Votre forfait</legend>
+                    <div className="grid gap-2">
+                      {forfaits.map((offre) => {
+                        const choisi = offre.id === forfaitChoisi
+                        return (
+                          <button
+                            key={offre.id}
+                            type="button"
+                            aria-pressed={choisi}
+                            onClick={() => setForfaitChoisi(offre.id)}
+                            className={cn(
+                              'flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors',
+                              choisi
+                                ? 'border-ink bg-cloud'
+                                : 'border-cloud-300 hover:border-neutral-400',
+                            )}
+                          >
+                            <span className="min-w-0">
+                              <span className="block text-[13.5px] font-semibold text-ink">
+                                {offre.nom}
+                              </span>
+                              <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-muted">
+                                {offre.resume}
+                              </span>
+                            </span>
+                            <span className="shrink-0 text-[14px] font-bold text-ink">
+                              {prixLisible(offre.prix)}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </fieldset>
+
+                  {fournisseurs.includes('cinetpay') ? (
+                    <div className="mb-5 flex flex-wrap gap-2">
+                      {MOYENS.map((moyen) => (
                         <span
-                          aria-hidden
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{ background: moyen.teinte }}
-                        />
-                        {moyen.nom}
-                      </span>
-                    ))}
-                  </div>
+                          key={moyen.id}
+                          className="inline-flex items-center gap-2 rounded-full border border-cloud-400 bg-white px-3 py-1.5 text-[12px] font-semibold text-ink"
+                        >
+                          <span
+                            aria-hidden
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ background: moyen.teinte }}
+                          />
+                          {moyen.nom}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
 
                   <ol className="mb-5 grid gap-1.5 rounded-xl bg-cloud px-4 py-3 text-[12px] leading-relaxed text-ink-muted">
                     <li>
@@ -299,16 +368,22 @@ export function TelechargementDialog({
 
                 {doitPayer ? (
                   <>
-                    <Field
-                      label="Numéro Mobile Money"
-                      hint="Le numéro qui sera débité. La demande de confirmation arrive dessus."
-                    >
-                      <TextInput
-                        value={form.telephone}
-                        onChange={(v) => setForm((f) => ({ ...f, telephone: v }))}
-                        placeholder="+225 07 07 12 34 56"
-                      />
-                    </Field>
+                    {fournisseurs.includes('cinetpay') ? (
+                      <Field
+                        label="Numéro Mobile Money"
+                        hint={
+                          fournisseurs.includes('stripe')
+                            ? 'Le numéro à débiter. Inutile si vous réglez par carte bancaire.'
+                            : 'Le numéro qui sera débité. La demande de confirmation arrive dessus.'
+                        }
+                      >
+                        <TextInput
+                          value={form.telephone}
+                          onChange={(v) => setForm((f) => ({ ...f, telephone: v }))}
+                          placeholder="+225 07 07 12 34 56"
+                        />
+                      </Field>
+                    ) : null}
                     <Field label="Nom complet">
                       <TextInput
                         value={form.nom}
@@ -340,21 +415,36 @@ export function TelechargementDialog({
           {etape === 'coordonnees' || etape === 'erreur' ? (
             <>
               {doitPayer ? (
-                <button
-                  type="button"
-                  disabled={!complet}
-                  onClick={payer}
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-azur-btn text-[15px] font-semibold text-white transition-[filter] hover:brightness-110 disabled:opacity-50"
-                >
-                  <CreditCard size={17} />
-                  Payer {prixLisible()}
-                </button>
+                <div className="grid gap-2">
+                  {(fournisseurs.length ? fournisseurs : (['cinetpay'] as Fournisseur[])).map(
+                    (fournisseur, rang) => (
+                      <button
+                        key={fournisseur}
+                        type="button"
+                        disabled={!complet(fournisseur)}
+                        onClick={() => payer(fournisseur)}
+                        className={cn(
+                          'inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-[15px] font-semibold transition-[filter,color] disabled:opacity-50',
+                          rang === 0
+                            ? 'bg-azur-btn text-white hover:brightness-110'
+                            : 'border border-cloud-400 text-ink hover:border-azur-400 hover:text-navy-700',
+                        )}
+                      >
+                        {fournisseur === 'stripe' ? <CreditCard size={17} /> : <Smartphone size={17} />}
+                        Payer {prixLisible(forfait.prix)}
+                        <span className="font-normal opacity-80">
+                          {fournisseur === 'stripe' ? 'par carte' : 'en Mobile Money'}
+                        </span>
+                      </button>
+                    ),
+                  )}
+                </div>
               ) : (
                 <>
                   {envoiActif === false ? null : (
                     <button
                       type="button"
-                      disabled={!complet}
+                      disabled={!pretAValider}
                       onClick={envoyer}
                       className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-azur-btn text-[15px] font-semibold text-white transition-[filter] hover:brightness-110 disabled:opacity-50"
                     >

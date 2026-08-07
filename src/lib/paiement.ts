@@ -34,8 +34,64 @@ export const PAIEMENT = {
   dureeJours: nombre(process.env.NEXT_PUBLIC_PAIEMENT_DUREE_JOURS, 30),
 } as const
 
-export function prixLisible() {
-  return `${PAIEMENT.prix.toLocaleString('fr-FR').replace(/ | /g, ' ')} F CFA`
+export function prixLisible(montant: number = PAIEMENT.prix) {
+  return `${montant.toLocaleString('fr-FR').replace(/ | /g, ' ')} F CFA`
+}
+
+/* ------------------------------------------------------------------ */
+/* Forfaits                                                            */
+/* ------------------------------------------------------------------ */
+
+/** Encaisseur : Mobile Money par CinetPay, carte bancaire par Stripe. */
+export type Fournisseur = 'cinetpay' | 'stripe'
+
+export interface Forfait {
+  id: string
+  nom: string
+  resume: string
+  /** Montant en francs CFA. */
+  prix: number
+  /** Durée d'accès illimité ouverte par l'achat. */
+  dureeJours: number
+}
+
+/**
+ * Ce qu'un client peut acheter. Un forfait n'ouvre pas un document précis mais
+ * une **durée** de téléchargements libres : c'est ce que le jeton d'accès sait
+ * déjà porter, et cela évite d'avoir à pister quel document a été payé sur
+ * quel appareil.
+ *
+ * Les montants se règlent par variables d'environnement : la grille ci-dessous
+ * n'est qu'un point de départ.
+ */
+export const FORFAITS: Forfait[] = [
+  {
+    id: 'document',
+    nom: 'Un document',
+    resume: 'Le PDF de votre CV ou de votre lettre, aujourd\u2019hui.',
+    prix: nombre(process.env.NEXT_PUBLIC_PAIEMENT_PRIX_DOCUMENT, 1000),
+    dureeJours: 1,
+  },
+  {
+    id: 'dossier',
+    nom: 'Le dossier',
+    resume: 'CV et lettre, avec une semaine pour les retoucher.',
+    prix: nombre(process.env.NEXT_PUBLIC_PAIEMENT_PRIX_DOSSIER, 2000),
+    dureeJours: 7,
+  },
+  {
+    id: 'mois',
+    nom: `Acc\u00e8s ${PAIEMENT.dureeJours} jours`,
+    resume: 'T\u00e9l\u00e9chargements illimit\u00e9s, autant de versions que voulu.',
+    prix: PAIEMENT.prix,
+    dureeJours: PAIEMENT.dureeJours,
+  },
+]
+
+export const FORFAIT_PAR_DEFAUT = 'mois'
+
+export function forfaitParId(id: string | undefined | null) {
+  return FORFAITS.find((f) => f.id === id) ?? FORFAITS[FORFAITS.length - 1]
 }
 
 /** Moyens de paiement présentés à l'utilisateur, dans l'ordre d'usage en Côte d'Ivoire. */

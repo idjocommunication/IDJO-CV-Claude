@@ -191,3 +191,61 @@ Règles de sécurité respectées par cette implémentation :
 - le HTML reçu par `/api/envoi-cv` est nettoyé et imprimé sans exécution de
   script ;
 - la sauvegarde `.json` reste gratuite : ces données appartiennent au client.
+
+---
+
+## 6. Encaisser aussi par carte bancaire, avec Stripe
+
+Stripe peut fonctionner **en plus** de CinetPay : le client choisit alors
+« Mobile Money » ou « carte ». Il fonctionne aussi **seul**, si vous ne visez
+que la carte.
+
+> Stripe n'ouvre pas de compte marchand à une société établie en Côte
+> d'Ivoire, et ne traite ni Wave ni Orange Money. Il n'est donc utile que si
+> vous disposez d'une structure dans un pays qu'il dessert, ou pour encaisser
+> une clientèle qui paie par carte. Pour le marché local, CinetPay reste le
+> chemin direct.
+
+### Brancher
+
+```bash
+STRIPE_SECRET_KEY="sk_live_…"   # ou sk_test_… pour éprouver le parcours
+STRIPE_DEVISE="xof"             # "eur" + STRIPE_TAUX_CONVERSION si le compte refuse le XOF
+PAIEMENT_SECRET="…"             # le même que pour CinetPay
+NEXT_PUBLIC_PAIEMENT_ACTIF="1"
+```
+
+Rien d'autre : les routes `/api/paiement/*` reconnaissent l'encaisseur à la
+référence de transaction. Aucune URL n'est à déclarer dans le tableau de bord
+Stripe — l'adresse de retour voyage avec la session.
+
+### Les forfaits
+
+Trois forfaits sont proposés, réglables par variables d'environnement :
+
+| Forfait | Variable | Défaut | Accès ouvert |
+|---|---|---|---|
+| Un document | `NEXT_PUBLIC_PAIEMENT_PRIX_DOCUMENT` | 1 000 F | 1 jour |
+| Le dossier | `NEXT_PUBLIC_PAIEMENT_PRIX_DOSSIER` | 2 000 F | 7 jours |
+| Accès long | `NEXT_PUBLIC_PAIEMENT_PRIX` | 4 900 F | `NEXT_PUBLIC_PAIEMENT_DUREE_JOURS` |
+
+Un forfait n'ouvre pas un document précis mais une **durée** de
+téléchargements libres. La durée du jeton d'accès est celle du forfait
+réellement réglé, relue dans la session Stripe — pas celle annoncée par le
+navigateur.
+
+### Ce qui est vérifié avant d'ouvrir l'accès
+
+- la session est bien `paid` chez Stripe, interrogée par le serveur ;
+- le montant réglé correspond au forfait annoncé — une session sous-payée est
+  refusée ;
+- l'identifiant de session a la forme attendue.
+
+Tant que ces contrôles ne passent pas, aucun jeton n'est délivré et
+l'impression sort la page « Document verrouillé ».
+
+### Éprouver sans clé réelle
+
+`STRIPE_BASE_URL` permet de viser un simulateur local au lieu de l'API : le
+parcours complet — création de session, page de paiement, retour, vérification,
+ouverture de l'accès — se teste alors sans compte et sans débit.

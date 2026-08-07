@@ -1,5 +1,6 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
-import { PAIEMENT, type DocumentPayant } from '@/lib/paiement'
+import { PAIEMENT, type DocumentPayant, type Fournisseur } from '@/lib/paiement'
+import { estReferenceStripe, stripeConfigure, verifierSessionStripe } from '@/lib/stripe-serveur'
 
 /**
  * Côté serveur du paiement.
@@ -12,8 +13,22 @@ import { PAIEMENT, type DocumentPayant } from '@/lib/paiement'
 
 const SECRET = process.env.PAIEMENT_SECRET ?? ''
 
-export function paiementConfigure() {
+/** CinetPay est-il branché ? (Mobile Money et cartes en F CFA) */
+export function cinetpayConfigure() {
   return Boolean(process.env.CINETPAY_API_KEY && process.env.CINETPAY_SITE_ID && SECRET)
+}
+
+/** Encaisseurs réellement utilisables sur ce site, dans l'ordre d'affichage. */
+export function fournisseursDisponibles(): Fournisseur[] {
+  const liste: Fournisseur[] = []
+  if (cinetpayConfigure()) liste.push('cinetpay')
+  if (stripeConfigure()) liste.push('stripe')
+  return liste
+}
+
+/** Au moins un encaisseur est-il branché ? */
+export function paiementConfigure() {
+  return fournisseursDisponibles().length > 0
 }
 
 /* ------------------------------------------------------------------ */
@@ -121,6 +136,27 @@ export async function initierPaiement(demande: DemandePaiement, origine: string)
 }
 
 export type EtatPaiement = 'paye' | 'en-attente' | 'refuse'
+
+/**
+ * État d'une transaction, quel que soit l'encaisseur.
+ *
+ * La référence dit à qui s'adresser : celles de Stripe portent leur préfixe,
+ * les autres reviennent à CinetPay. La durée renvoyée est celle du forfait
+ * réellement réglé — c'est elle qui fixe la validité du jeton d'accès.
+ */
+export async function verifierTransaction(
+  reference: string,
+): Promise<{ etat: EtatPaiement; dureeJours: number }> {
+  if (estReferenceStripe(reference)) {
+    const resultat = await verifierSessionStripe(reference)
+    return resultat.etat === 'paye'
+      ? { etat: 'paye', dureeJours: resultat.dureeJours }
+      : { etat: resultat.etat, dureeJours: PAIEMENT.dureeJours }
+  }
+
+  const etat = await verifierPaiement(reference)
+  return { etat, dureeJours: PAIEMENT.dureeJours }
+}
 
 /**
  * Interroge CinetPay sur l'état réel d'une transaction. C'est la seule source

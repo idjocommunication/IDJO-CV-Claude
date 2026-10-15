@@ -13,7 +13,7 @@ il suffit de choisir la commande de construction.
 | Import d'un CV existant | analyse dans le navigateur | analyse assistée par Claude |
 | Formulaire de contact | e-mail / WhatsApp | envoi depuis le site |
 | Envoi du CV par e-mail | non | oui |
-| Paiement CinetPay | non | oui |
+| Paiement CinetPay | lien + code vérifié dans le navigateur | oui (clés API ou lien + code signé) |
 | Enregistrement en base | non | oui |
 
 Aucune de ces différences n'empêche un candidat de faire son CV et de le

@@ -26,10 +26,28 @@ export const PAIEMENT = {
    * Le paiement ne s'active que si le marchand est configuré — et jamais en
    * export statique, faute de serveur pour vérifier la transaction.
    */
-  actif: process.env.NEXT_PUBLIC_PAIEMENT_ACTIF === '1' && !SANS_SERVEUR,
+  actif:
+    process.env.NEXT_PUBLIC_PAIEMENT_ACTIF === '1' &&
+    (!SANS_SERVEUR || Boolean(process.env.NEXT_PUBLIC_PAIEMENT_LIEN && process.env.NEXT_PUBLIC_PAIEMENT_CODES_HASH)),
   mode: (process.env.NEXT_PUBLIC_PAIEMENT_MODE as ModePaiement) || 'bloquant',
   /** Montant en francs CFA. CinetPay exige un multiple de 5 pour le XOF. */
-  prix: Math.round(nombre(process.env.NEXT_PUBLIC_PAIEMENT_PRIX, 4900) / 5) * 5,
+  prix: Math.round(nombre(process.env.NEXT_PUBLIC_PAIEMENT_PRIX, 500) / 5) * 5,
+  /**
+   * Lien de paiement CinetPay du marchand. S'il est renseigné, le client règle
+   * sur ce lien puis saisit un code d'accès que l'équipe lui remet après
+   * vérification du paiement dans le tableau de bord CinetPay.
+   */
+  lien: process.env.NEXT_PUBLIC_PAIEMENT_LIEN?.trim() ?? '',
+  /**
+   * Hébergement sans serveur : empreintes SHA-256 des codes valides, vérifiées
+   * dans le navigateur. Moins sûr que la signature serveur (le code JavaScript
+   * peut être contourné par un utilisateur averti), mais fonctionnel.
+   */
+  codesHash: (process.env.NEXT_PUBLIC_PAIEMENT_CODES_HASH ?? '')
+    .toLowerCase()
+    .split(',')
+    .map((h) => h.trim())
+    .filter(Boolean),
   devise: 'XOF',
   dureeJours: nombre(process.env.NEXT_PUBLIC_PAIEMENT_DUREE_JOURS, 30),
 } as const
@@ -61,28 +79,13 @@ export interface Forfait {
  * déjà porter, et cela évite d'avoir à pister quel document a été payé sur
  * quel appareil.
  *
- * Les montants se règlent par variables d'environnement : la grille ci-dessous
- * n'est qu'un point de départ.
+ * Un seul tarif : celui du lien de paiement CinetPay.
  */
 export const FORFAITS: Forfait[] = [
   {
-    id: 'document',
-    nom: 'Un document',
-    resume: 'Le PDF de votre CV ou de votre lettre, aujourd\u2019hui.',
-    prix: nombre(process.env.NEXT_PUBLIC_PAIEMENT_PRIX_DOCUMENT, 1000),
-    dureeJours: 1,
-  },
-  {
-    id: 'dossier',
-    nom: 'Le dossier',
-    resume: 'CV et lettre, avec une semaine pour les retoucher.',
-    prix: nombre(process.env.NEXT_PUBLIC_PAIEMENT_PRIX_DOSSIER, 2000),
-    dureeJours: 7,
-  },
-  {
     id: 'mois',
     nom: `Acc\u00e8s ${PAIEMENT.dureeJours} jours`,
-    resume: 'T\u00e9l\u00e9chargements illimit\u00e9s, autant de versions que voulu.',
+    resume: 'T\u00e9l\u00e9chargements illimit\u00e9s, CV et lettre, autant de versions que voulu.',
     prix: PAIEMENT.prix,
     dureeJours: PAIEMENT.dureeJours,
   },
@@ -144,6 +147,27 @@ export function oublierAcces() {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(CLE)
   window.dispatchEvent(new Event('idjo-acces'))
+}
+
+/** Forme canonique d'un code saisi : majuscules, sans tirets, sans préfixe IDJO. */
+export function normaliserCode(saisie: string) {
+  return saisie.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^IDJO/, '')
+}
+
+/**
+ * Vérification d'un code dans le navigateur (hébergement sans serveur).
+ * Renvoie un accès local si l'empreinte du code figure dans la liste publiée.
+ */
+export async function verifierCodeLocal(saisie: string): Promise<Acces | null> {
+  const code = normaliserCode(saisie)
+  if (code.length !== 12 || !window.crypto?.subtle) return null
+  const octets = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
+  const empreinte = Array.from(new Uint8Array(octets), (o) => o.toString(16).padStart(2, '0')).join('')
+  if (!PAIEMENT.codesHash.includes(empreinte)) return null
+
+  const expire = Date.now() + PAIEMENT.dureeJours * 24 * 60 * 60 * 1000
+  const reference = `CODE-${empreinte.slice(0, 8)}`
+  return { token: `LOCAL.${expire}.${empreinte.slice(0, 16)}`, expire, reference }
 }
 
 /** Le téléchargement est-il autorisé en l'état ? */

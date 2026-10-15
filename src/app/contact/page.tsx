@@ -6,7 +6,7 @@ import { SITE, buildMetadata, whatsappLink } from '@/lib/seo'
 export const metadata: Metadata = buildMetadata({
   title: 'Contact',
   description:
-    'Une question sur votre CV, un besoin d’accompagnement ou un problème technique ? L’équipe IDJÔ CV répond sous 24 heures.',
+    'Une question sur votre CV, une question sur le paiement ou un problème technique ? L’équipe IDJÔ CV répond sous 24 heures.',
   path: '/contact',
 })
 
@@ -20,7 +20,7 @@ export default function ContactPage() {
           <p className="eyebrow mb-3">Contact</p>
           <h1 className="title-xl text-ink">Parlons de votre candidature</h1>
           <p className="prose-muted mt-5">
-            Support technique, question sur une offre, demande d’accompagnement par un consultant
+            Support technique, question sur le paiement ou le code d’accès
             RH : écrivez-nous, on répond en français sous 24 heures ouvrées.
           </p>
 

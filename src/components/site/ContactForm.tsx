@@ -150,7 +150,7 @@ export function ContactForm() {
           <TextInput
             value={form.subject}
             onChange={(v) => update({ subject: v })}
-            placeholder="Accompagnement, facturation, question technique…"
+            placeholder="Paiement, code d’accès, question technique…"
           />
         </Field>
         <Field label="Message" className="sm:col-span-2">

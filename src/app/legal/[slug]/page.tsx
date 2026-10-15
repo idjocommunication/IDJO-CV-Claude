@@ -99,14 +99,14 @@ const PAGES: LegalPage[] = [
       {
         heading: 'Offres et paiement',
         paragraphs: [
-          'L’usage de l’éditeur, des modèles, de la lettre de motivation et de l’export PDF est gratuit et ne nécessite aucun compte. Seule la prestation d’accompagnement par un consultant est payante : elle fait l’objet d’un devis, d’un rendez-vous et d’un règlement unique en francs CFA.',
+          'L’usage de l’éditeur, des modèles, de la lettre de motivation et de l’assistant est gratuit et ne nécessite aucun compte. Seul le téléchargement du PDF final est payant : un règlement unique en francs CFA ouvre un accès de téléchargements illimités pendant une durée annoncée au moment du paiement.',
           'Aucun renouvellement automatique n’est appliqué. Le prix affiché au moment de la commande est le prix dû.',
         ],
       },
       {
         heading: 'Rétractation',
         paragraphs: [
-          'Un remboursement intégral peut être demandé dans les 7 jours suivant le paiement, sauf si la prestation d’accompagnement a déjà été réalisée.',
+          'Un remboursement intégral peut être demandé dans les 7 jours suivant le paiement, sauf si le document a déjà été téléchargé.',
         ],
       },
       {

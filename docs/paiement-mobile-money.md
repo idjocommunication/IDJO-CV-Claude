@@ -81,7 +81,7 @@ Dans l'environnement de production (`.env`, Vercel, conteneur…) :
 ```bash
 # Le paiement ne s'active que si cette variable vaut 1
 NEXT_PUBLIC_PAIEMENT_ACTIF="1"
-NEXT_PUBLIC_PAIEMENT_PRIX="4900"        # F CFA, multiple de 5
+NEXT_PUBLIC_PAIEMENT_PRIX="500"         # F CFA, multiple de 5
 NEXT_PUBLIC_PAIEMENT_DUREE_JOURS="30"
 NEXT_PUBLIC_SITE_URL="https://votre-domaine.ci"
 
@@ -219,15 +219,12 @@ Rien d'autre : les routes `/api/paiement/*` reconnaissent l'encaisseur à la
 référence de transaction. Aucune URL n'est à déclarer dans le tableau de bord
 Stripe — l'adresse de retour voyage avec la session.
 
-### Les forfaits
+### Le tarif
 
-Trois forfaits sont proposés, réglables par variables d'environnement :
-
-| Forfait | Variable | Défaut | Accès ouvert |
-|---|---|---|---|
-| Un document | `NEXT_PUBLIC_PAIEMENT_PRIX_DOCUMENT` | 1 000 F | 1 jour |
-| Le dossier | `NEXT_PUBLIC_PAIEMENT_PRIX_DOSSIER` | 2 000 F | 7 jours |
-| Accès long | `NEXT_PUBLIC_PAIEMENT_PRIX` | 4 900 F | `NEXT_PUBLIC_PAIEMENT_DUREE_JOURS` |
+Un seul tarif : `NEXT_PUBLIC_PAIEMENT_PRIX` (500 F par défaut) ouvre
+`NEXT_PUBLIC_PAIEMENT_DUREE_JOURS` jours de téléchargements libres. Avec le lien
+de paiement CinetPay (`NEXT_PUBLIC_PAIEMENT_LIEN`), le montant du lien doit être
+identique à ce prix.
 
 Un forfait n'ouvre pas un document précis mais une **durée** de
 téléchargements libres. La durée du jeton d'accès est celle du forfait

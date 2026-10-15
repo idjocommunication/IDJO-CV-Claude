@@ -17,7 +17,6 @@ import { Field, TextInput } from '@/components/editor/fields'
 import { useCvStore } from '@/lib/store'
 import {
   PAIEMENT,
-  FORFAITS,
   FORFAIT_PAR_DEFAUT,
   MOYENS,
   dateLisible,
@@ -26,7 +25,6 @@ import {
   verifierCodeLocal,
   prixLisible,
   type DocumentPayant,
-  type Forfait,
   type Fournisseur,
 } from '@/lib/paiement'
 import {
@@ -78,12 +76,10 @@ export function TelechargementDialog({
   const [form, setForm] = useState({ nom: '', telephone: '', email: '' })
   /** Encaisseurs branchés sur ce site, tels que le serveur les déclare. */
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
-  const [forfaits, setForfaits] = useState<Forfait[]>(FORFAITS)
-  const [forfaitChoisi, setForfaitChoisi] = useState(FORFAIT_PAR_DEFAUT)
   const panneau = useRef<HTMLDivElement>(null)
 
   const doitPayer = !autorise
-  const forfait = forfaitParId(forfaitChoisi)
+  const forfait = forfaitParId(FORFAIT_PAR_DEFAUT)
 
   // Pré-remplissage : ce que le client a déjà saisi dans son CV.
   useEffect(() => {
@@ -103,15 +99,14 @@ export function TelechargementDialog({
   }, [])
 
   // Ce que le site sait encaisser : la réponse ne contient aucune clé, juste
-  // les forfaits et les encaisseurs à proposer.
+  // les encaisseurs à proposer.
   useEffect(() => {
     let vivant = true
     void fetch('/api/paiement/initier')
       .then((r) => (r.ok ? r.json() : null))
-      .then((offre: { fournisseurs?: Fournisseur[]; forfaits?: Forfait[] } | null) => {
+      .then((offre: { fournisseurs?: Fournisseur[] } | null) => {
         if (!vivant || !offre) return
         if (offre.fournisseurs?.length) setFournisseurs(offre.fournisseurs)
-        if (offre.forfaits?.length) setForfaits(offre.forfaits)
       })
       .catch(() => undefined)
     return () => {
@@ -149,7 +144,7 @@ export function TelechargementDialog({
           email: form.email.trim(),
           document: cible,
           fournisseur,
-          forfait: forfaitChoisi,
+          forfait: forfait.id,
         }),
       })
       const json = (await response.json()) as { url?: string; reference?: string; error?: string }
@@ -281,41 +276,6 @@ export function TelechargementDialog({
             <>
               {doitPayer ? (
                 <>
-                  <fieldset className="mb-5">
-                    <legend className="eyebrow mb-2.5">Votre forfait</legend>
-                    <div className="grid gap-2">
-                      {forfaits.map((offre) => {
-                        const choisi = offre.id === forfaitChoisi
-                        return (
-                          <button
-                            key={offre.id}
-                            type="button"
-                            aria-pressed={choisi}
-                            onClick={() => setForfaitChoisi(offre.id)}
-                            className={cn(
-                              'flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors',
-                              choisi
-                                ? 'border-ink bg-cloud'
-                                : 'border-cloud-300 hover:border-neutral-400',
-                            )}
-                          >
-                            <span className="min-w-0">
-                              <span className="block text-[13.5px] font-semibold text-ink">
-                                {offre.nom}
-                              </span>
-                              <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-muted">
-                                {offre.resume}
-                              </span>
-                            </span>
-                            <span className="shrink-0 text-[14px] font-bold text-ink">
-                              {prixLisible(offre.prix)}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </fieldset>
-
                   {fournisseurs.includes('cinetpay') ? (
                     <div className="mb-5 flex flex-wrap gap-2">
                       {MOYENS.map((moyen) => (

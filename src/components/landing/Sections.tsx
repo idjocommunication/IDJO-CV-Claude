@@ -16,7 +16,8 @@ import { ButtonLink } from '@/components/ui/Button'
 import { TemplateCard } from '@/components/landing/TemplateCard'
 import { AutoScaleLetter } from '@/components/ui/AutoScaleLetter'
 import { TEMPLATES } from '@/data/templates'
-import { FAQ, FEATURES, GUARANTEES, PLANS, STATS, STEPS } from '@/data/marketing'
+import { PAIEMENT, prixLisible } from '@/lib/paiement'
+import { FAQ, FEATURES, GUARANTEES, OFFRE, STATS, STEPS } from '@/data/marketing'
 import { cn } from '@/lib/utils'
 
 const ICONS: Record<string, LucideIcon> = {
@@ -288,84 +289,39 @@ export function Pricing({ compact = false }: { compact?: boolean }) {
   return (
     <section className={cn('container-content', compact ? 'py-14' : 'py-20 sm:py-28')} id="tarifs">
       <SectionHeading
-        eyebrow="Tarifs"
-        title="Gratuit pour composer, payant pour emporter"
-        description="Tout l’éditeur est ouvert sans payer : modèles, couleurs, assistant, analyse ATS, lettre. Le règlement n’intervient qu’au téléchargement du PDF — une fois, pour trente jours."
+        eyebrow="Tarif"
+        title={`Gratuit pour composer, ${prixLisible()} pour emporter`}
+        description={`Tout l’éditeur est ouvert sans payer : modèles, couleurs, assistant, analyse ATS, lettre. Le règlement n’intervient qu’au téléchargement du PDF — une fois, pour ${PAIEMENT.dureeJours} jours.`}
         align="center"
       />
 
-      <div className="mt-14 grid gap-6 lg:grid-cols-3">
-        {PLANS.map((plan) => (
-          <article
-            key={plan.id}
-            className={cn(
-              'relative flex flex-col rounded-2xl border p-8',
-              plan.highlight
-                ? 'border-azur-500 bg-navy-glow text-white shadow-glow'
-                : 'border-cloud-300 bg-white',
-            )}
-          >
-            {plan.highlight ? (
-              <span className="absolute right-6 top-6 rounded-full bg-azur-500 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-white">
-                Le plus pris
-              </span>
-            ) : null}
-            <h3 className={cn('text-lg font-bold', plan.highlight ? 'text-white' : 'text-ink')}>
-              {plan.name}
-            </h3>
-            <p
-              className={cn(
-                'mt-1 text-[13px]',
-                plan.highlight ? 'text-azur-200' : 'text-ink-muted',
-              )}
-            >
-              {plan.description}
-            </p>
+      <article className="relative mx-auto mt-14 flex max-w-md flex-col rounded-2xl border border-azur-500 bg-navy-glow p-8 text-white shadow-glow">
+        <h3 className="text-lg font-bold text-white">{OFFRE.name}</h3>
+        <p className="mt-1 text-[13px] text-azur-200">{OFFRE.description}</p>
 
-            <p className="mt-7 flex items-baseline gap-2">
-              <span
-                className={cn(
-                  'text-3xl font-extrabold tracking-[-0.03em]',
-                  plan.highlight ? 'text-white' : 'text-ink',
-                )}
-              >
-                {plan.priceLabel}
-              </span>
-            </p>
-            <p
-              className={cn(
-                'mt-1 text-xs',
-                plan.highlight ? 'text-azur-300' : 'text-ink-muted',
-              )}
-            >
-              {plan.period}
-            </p>
+        <p className="mt-7 text-3xl font-extrabold tracking-[-0.03em] text-white">
+          {OFFRE.priceLabel}
+        </p>
+        <p className="mt-1 text-xs text-azur-300">{OFFRE.period}</p>
 
-            <ul className="mt-7 flex-1 space-y-3">
-              {plan.features.map((feature) => (
-                <li key={feature} className="flex items-start gap-2.5 text-sm">
-                  <Check
-                    size={16}
-                    className={cn('mt-0.5 shrink-0', plan.highlight ? 'text-azur-300' : 'text-azur-600')}
-                  />
-                  <span className={plan.highlight ? 'text-azur-100' : 'text-ink-muted'}>
-                    {feature}
-                  </span>
-                </li>
-              ))}
-            </ul>
+        <ul className="mt-7 flex-1 space-y-3">
+          {OFFRE.features.map((feature) => (
+            <li key={feature} className="flex items-start gap-2.5 text-sm">
+              <Check size={16} className="mt-0.5 shrink-0 text-azur-300" />
+              <span className="text-azur-100">{feature}</span>
+            </li>
+          ))}
+        </ul>
 
-            <ButtonLink
-              href={plan.href}
-              variant={plan.highlight ? 'secondary' : 'outline'}
-              size="md"
-              className={cn('mt-8 w-full', plan.highlight && 'bg-white text-navy-700 hover:bg-azur-100')}
-            >
-              {plan.cta}
-            </ButtonLink>
-          </article>
-        ))}
-      </div>
+        <ButtonLink
+          href={OFFRE.href}
+          variant="secondary"
+          size="md"
+          className="mt-8 w-full bg-white text-navy-700 hover:bg-azur-100"
+        >
+          {OFFRE.cta}
+        </ButtonLink>
+      </article>
 
       <p className="mx-auto mt-8 max-w-2xl text-center text-[13px] leading-relaxed text-ink-muted">
         Paiement par Wave, Orange Money, MTN MoMo, Moov Money ou carte bancaire, en francs CFA.

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { PAIEMENT } from '@/lib/paiement'
 
 /**
  * Identité et coordonnées du site. Tout ce qui est propre à l'exploitant se
@@ -103,8 +104,8 @@ export function softwareJsonLd() {
       },
       {
         '@type': 'Offer',
-        name: 'Accompagnement',
-        price: '19000',
+        name: 'Téléchargement',
+        price: String(PAIEMENT.prix),
         priceCurrency: 'XOF',
       },
     ],

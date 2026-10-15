@@ -16,6 +16,7 @@
     "prebuild": "node scripts/copy-pdf-worker.mjs",
     "predev": "node scripts/copy-pdf-worker.mjs",
     "demo": "node scripts/build-demo.mjs",
+    "code-acces": "node scripts/generer-codes.mjs",
     "build:statique": "node scripts/build-statique.mjs",
     "build:vps": "SORTIE=standalone next build"
   },

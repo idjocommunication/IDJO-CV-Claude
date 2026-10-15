@@ -26,9 +26,55 @@ export function fournisseursDisponibles(): Fournisseur[] {
   return liste
 }
 
-/** Au moins un encaisseur est-il branché ? */
+/** Le paiement par lien + code d'accès est-il prêt ? */
+export function codesConfigure() {
+  return Boolean(PAIEMENT.lien && SECRET)
+}
+
+/** Au moins un moyen d'obtenir un accès est-il branché ? */
 export function paiementConfigure() {
-  return fournisseursDisponibles().length > 0
+  return fournisseursDisponibles().length > 0 || codesConfigure()
+}
+
+/* ------------------------------------------------------------------ */
+/* Codes d'accès (paiement par lien)                                   */
+/* ------------------------------------------------------------------ */
+
+// Sans 0/O/1/I/L : un code recopié depuis WhatsApp ne doit pas prêter à confusion.
+const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+
+function marque(serie: string) {
+  const h = createHmac('sha256', SECRET).update(`code:${serie}`).digest()
+  return Array.from(h.subarray(0, 8), (octet) => ALPHABET[octet % ALPHABET.length]).join('')
+}
+
+/** `IDJO-ABCD-EFGHJKMN` : 4 caractères de série, 8 de signature. */
+export function fabriquerCode(serie: string) {
+  return `IDJO-${serie}-${marque(serie)}`
+}
+
+/**
+ * Vérifie un code saisi par le client. Sans base de données, un code reste
+ * valable tant que sa série n'est pas listée dans PAIEMENT_CODES_REVOQUES
+ * (séries séparées par des virgules).
+ */
+export function verifierCode(saisie: string) {
+  if (!SECRET) return null
+  const brut = saisie.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const m = /^(?:IDJO)?([A-Z0-9]{4})([A-Z0-9]{8})$/.exec(brut)
+  if (!m) return null
+
+  const attendue = Buffer.from(marque(m[1]))
+  const recue = Buffer.from(m[2])
+  if (attendue.length !== recue.length || !timingSafeEqual(attendue, recue)) return null
+
+  const revoques = (process.env.PAIEMENT_CODES_REVOQUES ?? '')
+    .toUpperCase()
+    .split(',')
+    .map((x) => x.trim())
+  if (revoques.includes(m[1])) return null
+
+  return { serie: m[1] }
 }
 
 /* ------------------------------------------------------------------ */

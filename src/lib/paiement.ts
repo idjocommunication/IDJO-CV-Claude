@@ -29,7 +29,13 @@ export const PAIEMENT = {
   actif: process.env.NEXT_PUBLIC_PAIEMENT_ACTIF === '1' && !SANS_SERVEUR,
   mode: (process.env.NEXT_PUBLIC_PAIEMENT_MODE as ModePaiement) || 'bloquant',
   /** Montant en francs CFA. CinetPay exige un multiple de 5 pour le XOF. */
-  prix: Math.round(nombre(process.env.NEXT_PUBLIC_PAIEMENT_PRIX, 4900) / 5) * 5,
+  prix: Math.round(nombre(process.env.NEXT_PUBLIC_PAIEMENT_PRIX, 500) / 5) * 5,
+  /**
+   * Lien de paiement CinetPay du marchand. S'il est renseigné, le client règle
+   * sur ce lien puis saisit un code d'accès que l'équipe lui remet après
+   * vérification du paiement dans le tableau de bord CinetPay.
+   */
+  lien: process.env.NEXT_PUBLIC_PAIEMENT_LIEN?.trim() ?? '',
   devise: 'XOF',
   dureeJours: nombre(process.env.NEXT_PUBLIC_PAIEMENT_DUREE_JOURS, 30),
 } as const
@@ -61,28 +67,13 @@ export interface Forfait {
  * déjà porter, et cela évite d'avoir à pister quel document a été payé sur
  * quel appareil.
  *
- * Les montants se règlent par variables d'environnement : la grille ci-dessous
- * n'est qu'un point de départ.
+ * Un seul tarif : celui du lien de paiement CinetPay.
  */
 export const FORFAITS: Forfait[] = [
   {
-    id: 'document',
-    nom: 'Un document',
-    resume: 'Le PDF de votre CV ou de votre lettre, aujourd\u2019hui.',
-    prix: nombre(process.env.NEXT_PUBLIC_PAIEMENT_PRIX_DOCUMENT, 1000),
-    dureeJours: 1,
-  },
-  {
-    id: 'dossier',
-    nom: 'Le dossier',
-    resume: 'CV et lettre, avec une semaine pour les retoucher.',
-    prix: nombre(process.env.NEXT_PUBLIC_PAIEMENT_PRIX_DOSSIER, 2000),
-    dureeJours: 7,
-  },
-  {
     id: 'mois',
     nom: `Acc\u00e8s ${PAIEMENT.dureeJours} jours`,
-    resume: 'T\u00e9l\u00e9chargements illimit\u00e9s, autant de versions que voulu.',
+    resume: 'T\u00e9l\u00e9chargements illimit\u00e9s, CV et lettre, autant de versions que voulu.',
     prix: PAIEMENT.prix,
     dureeJours: PAIEMENT.dureeJours,
   },

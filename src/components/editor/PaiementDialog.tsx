@@ -16,6 +16,7 @@ import {
 import { Field, TextInput } from '@/components/editor/fields'
 import { useCvStore } from '@/lib/store'
 import {
+  PAIEMENT,
   FORFAITS,
   FORFAIT_PAR_DEFAUT,
   MOYENS,
@@ -38,6 +39,7 @@ import {
 import { PRINT_LABELS, printDocument } from '@/lib/print'
 import { useAcces } from '@/lib/use-acces'
 import { cn, fullName } from '@/lib/utils'
+import { SITE, whatsappLink } from '@/lib/seo'
 
 type Etape = 'coordonnees' | 'redirection' | 'envoi' | 'envoye' | 'erreur'
 
@@ -197,6 +199,9 @@ export function TelechargementDialog({
     onTelecharger(cible)
     onClose()
   }
+
+  // Paiement par lien CinetPay : règlement externe, puis code d'accès.
+  if (doitPayer && PAIEMENT.lien) return <AccesParLien onClose={onClose} />
 
   return (
     <div
@@ -660,6 +665,208 @@ export function RetourPaiement({ reference, onFini }: { reference: string; onFin
         >
           <X size={16} />
         </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Paiement sur le lien CinetPay du marchand. Le site ne peut pas voir le
+ * règlement : le client reçoit un code d'accès une fois son paiement vérifié
+ * dans le tableau de bord CinetPay, et c'est ce code, signé, qui ouvre l'accès.
+ */
+function AccesParLien({ onClose }: { onClose: () => void }) {
+  const [code, setCode] = useState('')
+  const [etat, setEtat] = useState<'saisie' | 'verification'>('saisie')
+  const [erreur, setErreur] = useState('')
+  const [paye, setPaye] = useState(false)
+  const panneau = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const message = `Bonjour, j’ai payé ${prixLisible()} pour télécharger mon CV sur IDJÔ CV. Voici ma preuve de paiement, pouvez-vous m’envoyer mon code d’accès ?`
+  const wa = whatsappLink(message)
+  const mail = `mailto:${SITE.email}?subject=${encodeURIComponent('Code d’accès IDJÔ CV')}&body=${encodeURIComponent(message)}`
+
+  const valider = async () => {
+    setEtat('verification')
+    setErreur('')
+    try {
+      const response = await fetch('/api/paiement/code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+      const json = (await response.json()) as {
+        token?: string
+        expire?: number
+        reference?: string
+        error?: string
+      }
+      if (!response.ok || !json.token || !json.expire) {
+        setErreur(json.error ?? 'Code refusé.')
+        setEtat('saisie')
+        return
+      }
+      enregistrerAcces({ token: json.token, expire: json.expire, reference: json.reference ?? '' })
+      setPaye(true)
+    } catch {
+      setErreur('Connexion impossible. Vérifiez votre réseau et réessayez.')
+      setEtat('saisie')
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-end justify-center bg-navy-900/60 backdrop-blur-sm sm:items-center sm:p-6"
+      onMouseDown={(event) => {
+        if (!panneau.current?.contains(event.target as Node)) onClose()
+      }}
+    >
+      <div
+        ref={panneau}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Régler et débloquer le téléchargement"
+        className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-float sm:rounded-2xl"
+      >
+        <header className="flex items-start justify-between gap-4 border-b border-cloud-300 px-6 py-5">
+          <div>
+            <h2 className="flex items-center gap-2 text-[17px] font-bold text-ink">
+              <Lock size={16} className="text-azur-600" />
+              Débloquer le téléchargement
+            </h2>
+            <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
+              {prixLisible()} — {PAIEMENT.dureeJours} jours de téléchargements illimités, CV et
+              lettre compris.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="-mr-2 -mt-1 rounded-full p-2 text-ink-muted transition-colors hover:bg-cloud-200 hover:text-ink"
+            aria-label="Fermer"
+          >
+            <X size={18} />
+          </button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {paye ? (
+            <div className="flex flex-col items-center gap-3 py-10 text-center">
+              <Check size={30} className="text-azur-600" />
+              <p className="text-sm font-semibold text-ink">Téléchargement débloqué</p>
+              <p className="max-w-sm text-[12.5px] leading-relaxed text-ink-muted">
+                Vous pouvez télécharger votre CV et votre lettre pendant {PAIEMENT.dureeJours} jours.
+              </p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="mt-2 inline-flex h-11 items-center justify-center rounded-full bg-azur-btn px-6 text-[14px] font-semibold text-white hover:brightness-110"
+              >
+                Continuer
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="mb-5 flex flex-wrap gap-2">
+                {MOYENS.map((moyen) => (
+                  <span
+                    key={moyen.id}
+                    className="inline-flex items-center gap-2 rounded-full border border-cloud-400 bg-white px-3 py-1.5 text-[12px] font-semibold text-ink"
+                  >
+                    <span
+                      aria-hidden
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ background: moyen.teinte }}
+                    />
+                    {moyen.nom}
+                  </span>
+                ))}
+              </div>
+
+              <ol className="grid gap-4">
+                <li>
+                  <p className="text-[13px] font-semibold text-ink">1. Réglez {prixLisible()}</p>
+                  <a
+                    href={PAIEMENT.lien}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-azur-btn text-[15px] font-semibold text-white transition-[filter] hover:brightness-110"
+                  >
+                    <Smartphone size={17} />
+                    Payer {prixLisible()}
+                  </a>
+                </li>
+                <li>
+                  <p className="text-[13px] font-semibold text-ink">
+                    2. Recevez votre code d’accès
+                  </p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-ink-muted">
+                    Envoyez-nous votre preuve de paiement : nous vous répondons avec votre code
+                    après vérification.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {wa ? (
+                      <a
+                        href={wa}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-10 items-center gap-2 rounded-full border border-cloud-400 px-4 text-[13px] font-semibold text-ink hover:border-azur-400 hover:text-navy-700"
+                      >
+                        WhatsApp
+                      </a>
+                    ) : null}
+                    <a
+                      href={mail}
+                      className="inline-flex h-10 items-center gap-2 rounded-full border border-cloud-400 px-4 text-[13px] font-semibold text-ink hover:border-azur-400 hover:text-navy-700"
+                    >
+                      <Mail size={14} />
+                      E-mail
+                    </a>
+                  </div>
+                </li>
+                <li>
+                  <Field label="3. Saisissez votre code">
+                    <TextInput
+                      value={code}
+                      onChange={setCode}
+                      placeholder="IDJO-ABCD-EFGHJKMN"
+                    />
+                  </Field>
+                  {erreur ? (
+                    <p className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-900">
+                      {erreur}
+                    </p>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={code.trim().length < 8 || etat === 'verification'}
+                    onClick={valider}
+                    className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-cloud-400 text-[14px] font-semibold text-ink transition-colors hover:border-azur-400 hover:text-navy-700 disabled:opacity-50"
+                  >
+                    {etat === 'verification' ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Check size={16} />
+                    )}
+                    Débloquer
+                  </button>
+                </li>
+              </ol>
+
+              <p className="mt-5 flex items-start gap-2 text-[11px] leading-relaxed text-ink-muted">
+                <ShieldCheck size={14} className="mt-0.5 shrink-0 text-azur-600" />
+                Le règlement s’effectue sur la page sécurisée de CinetPay. IDJÔ CV ne voit ni
+                votre code secret, ni votre solde. Votre CV reste dans votre navigateur.
+              </p>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

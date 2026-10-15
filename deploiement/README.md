@@ -157,6 +157,73 @@ journalctl -u idjo-cv -f
 
 ---
 
+## 3. Hébergement Node.js Hostinger — paiement automatique par l'API CinetPay
+
+C'est le mode qui permet un paiement **sans intervention** : le client paie
+chez CinetPay, revient sur le site, l'accès s'ouvre seul. Il exige un
+serveur Node, parce que la clé et le mot de passe CinetPay ne doivent jamais
+atteindre le navigateur.
+
+### Comment le site idjôcv.com est relié aujourd'hui
+
+- Le site est déclaré « Node.js » chez Hostinger et **relié au dépôt GitHub** :
+  chaque mise à jour de la branche `main` relance une construction Node
+  (Node 22, type « next », script `build`).
+- Les mises en ligne récentes ont été faites en **export statique** par-dessus,
+  avec le `.htaccess` de ce dossier : c'est lui qui est servi.
+- Aucune variable d'environnement n'est réglée côté Node.
+
+> Tant que la bascule n'est pas faite, **ne fusionnez rien dans `main`** : la
+> construction automatique écraserait l'export statique avec un serveur sans
+> variables, donc sans paiement (téléchargement libre), et le `.htaccess`
+> statique resté en place pourrait l'empêcher de répondre.
+
+### Avant la bascule
+
+1. **CinetPay** : passer le compte en production, relever la clé `sk_live_…`
+   et le mot de passe API, recréer le lien de paiement en production.
+2. **Liste blanche CinetPay** : y ajouter l'adresse IP du serveur Hostinger
+   (hPanel → Hébergement → Détails du plan → adresse IP). Le serveur du site
+   (`srv1905`) répond à l'adresse `193.203.168.199` : à confirmer dans hPanel,
+   car l'adresse de sortie peut différer.
+3. **Variables d'environnement** (hPanel → Sites → Node.js → Variables
+   d'environnement), à saisir **vous-même** dans hPanel plutôt qu'à faire
+   circuler par message :
+
+   | Variable | Valeur |
+   | --- | --- |
+   | `NEXT_PUBLIC_SITE_URL` | `https://xn--idjcv-8ta.com` (adresse publique exacte, sert aux retours CinetPay) |
+   | `NEXT_PUBLIC_PAIEMENT_ACTIF` | `1` |
+   | `NEXT_PUBLIC_PAIEMENT_PRIX` | `500` (= montant facturé) |
+   | `NEXT_PUBLIC_PAIEMENT_DUREE_JOURS` | `30` |
+   | `NEXT_PUBLIC_PAIEMENT_LIEN` | lien CinetPay de production (repli) |
+   | `PAIEMENT_SECRET` | longue chaîne aléatoire (`openssl rand -base64 48`) |
+   | `CINETPAY_API_KEY` | `sk_live_…` |
+   | `CINETPAY_API_PASSWORD` | mot de passe API CinetPay |
+   | `NEXT_PUBLIC_CONTACT_EMAIL` | adresse de contact |
+
+   Les `NEXT_PUBLIC_*` sont figées à la construction : régler les variables
+   **avant** de lancer la construction.
+4. **URL de notification** dans CinetPay :
+   `https://xn--idjcv-8ta.com/api/paiement/notification`.
+
+### La bascule
+
+1. Fusionner la branche de travail dans `main` : Hostinger reconstruit le
+   serveur Node automatiquement.
+2. Vérifier que le site répond en mode serveur :
+   `curl https://xn--idjcv-8ta.com/api/paiement/initier` doit renvoyer
+   `"fournisseurs":["cinetpay"]`. Un 404 signifie que l'ancien `.htaccess`
+   statique est encore servi : le retirer de `public_html` et relancer la
+   construction depuis hPanel.
+3. Faire un paiement réel de 500 F de sa poche et vérifier : débit visible chez
+   CinetPay, retour sur l'éditeur, « Paiement confirmé », PDF déverrouillé.
+
+En cas de souci, revenir à l'export statique (section 1) remet le site dans
+l'état actuel, avec le lien de paiement et les codes d'accès.
+
+---
+
 ## Avant d'ouvrir le site au public
 
 Deux points que le code ne peut pas décider à votre place :

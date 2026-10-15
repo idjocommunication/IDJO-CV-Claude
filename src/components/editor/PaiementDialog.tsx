@@ -73,9 +73,11 @@ export function TelechargementDialog({
   const [erreur, setErreur] = useState('')
   /** L'envoi par e-mail est-il actif sur ce site ? `null` tant qu'on l'ignore. */
   const [envoiActif, setEnvoiActif] = useState<boolean | null>(null)
-  const [form, setForm] = useState({ nom: '', telephone: '', email: '' })
+  const [form, setForm] = useState({ nom: '', email: '' })
   /** Encaisseurs branchés sur ce site, tels que le serveur les déclare. */
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
+  /** La réponse du serveur est-elle arrivée ? Sans serveur, il n'y en aura pas. */
+  const [offreChargee, setOffreChargee] = useState(SANS_SERVEUR)
   const panneau = useRef<HTMLDivElement>(null)
 
   // La lettre de motivation est gratuite : seul le CV passe par le paiement.
@@ -86,10 +88,9 @@ export function TelechargementDialog({
   useEffect(() => {
     setForm({
       nom: fullName(profil.firstName, profil.lastName),
-      telephone: profil.phone ?? '',
       email: dernierEmail() || profil.email || '',
     })
-  }, [profil.firstName, profil.lastName, profil.phone, profil.email])
+  }, [profil.firstName, profil.lastName, profil.email])
 
   useEffect(() => {
     let vivant = true
@@ -102,14 +103,15 @@ export function TelechargementDialog({
   // Ce que le site sait encaisser : la réponse ne contient aucune clé, juste
   // les encaisseurs à proposer.
   useEffect(() => {
+    if (SANS_SERVEUR) return
     let vivant = true
     void fetch('/api/paiement/initier')
       .then((r) => (r.ok ? r.json() : null))
       .then((offre: { fournisseurs?: Fournisseur[] } | null) => {
-        if (!vivant || !offre) return
-        if (offre.fournisseurs?.length) setFournisseurs(offre.fournisseurs)
+        if (vivant && offre?.fournisseurs?.length) setFournisseurs(offre.fournisseurs)
       })
       .catch(() => undefined)
+      .finally(() => vivant && setOffreChargee(true))
     return () => {
       vivant = false
     }
@@ -123,10 +125,9 @@ export function TelechargementDialog({
 
   const emailValide = /.+@.+\..+/.test(form.email.trim())
   const identiteComplete = emailValide && form.nom.trim().length >= 2
-  const telephoneComplet = form.telephone.replace(/\D/g, '').length >= 8
   /** La carte bancaire ne demande pas de numéro de téléphone. */
-  const complet = (fournisseur: Fournisseur) =>
-    fournisseur === 'stripe' ? identiteComplete : identiteComplete && telephoneComplet
+  // Aucun numéro Mobile Money n'est demandé ici : il se saisit chez CinetPay.
+  const complet = (fournisseur: Fournisseur) => offreChargee && Boolean(fournisseur) && identiteComplete
   const pretAValider = doitPayer ? fournisseurs.some(complet) : emailValide
 
   const payer = async (fournisseur: Fournisseur) => {
@@ -141,7 +142,6 @@ export function TelechargementDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nom: form.nom.trim(),
-          telephone: form.telephone.trim(),
           email: form.email.trim(),
           document: cible,
           fournisseur,
@@ -199,7 +199,13 @@ export function TelechargementDialog({
   }
 
   // Paiement par lien CinetPay : règlement externe, puis code d'accès.
-  if (doitPayer && PAIEMENT.lien) return <AccesParLien onClose={onClose} />
+  // Paiement automatique par l'API quand le serveur sait encaisser ; sinon
+  // (hébergement sans serveur, ou API non configurée) le lien CinetPay et son
+  // code d'accès prennent le relais.
+  const apiDisponible = fournisseurs.length > 0
+  if (doitPayer && PAIEMENT.lien && offreChargee && !apiDisponible) {
+    return <AccesParLien onClose={onClose} />
+  }
 
   return (
     <div
@@ -336,22 +342,6 @@ export function TelechargementDialog({
 
                 {doitPayer ? (
                   <>
-                    {fournisseurs.includes('cinetpay') ? (
-                      <Field
-                        label="Numéro Mobile Money"
-                        hint={
-                          fournisseurs.includes('stripe')
-                            ? 'Le numéro à débiter. Inutile si vous réglez par carte bancaire.'
-                            : 'Le numéro qui sera débité. La demande de confirmation arrive dessus.'
-                        }
-                      >
-                        <TextInput
-                          value={form.telephone}
-                          onChange={(v) => setForm((f) => ({ ...f, telephone: v }))}
-                          placeholder="+225 07 07 12 34 56"
-                        />
-                      </Field>
-                    ) : null}
                     <Field label="Nom complet">
                       <TextInput
                         value={form.nom}

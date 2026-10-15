@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { FORFAITS, PAIEMENT, forfaitParId } from '@/lib/paiement'
 import {
   cinetpayConfigure,
+  expliquerErreurPaiement,
   fournisseursDisponibles,
   initierPaiement,
   nouvelleReference,
@@ -32,7 +33,7 @@ const schema = z.object({
   fournisseur: z.enum(['cinetpay', 'stripe']).default('cinetpay'),
   nom: z.string().trim().min(2).max(80),
   email: z.string().trim().email().max(120),
-  // Le Mobile Money exige un numéro ; la carte bancaire, non.
+  // Facultatif : le numéro se saisit sur la page sécurisée de CinetPay.
   telephone: z
     .string()
     .trim()
@@ -77,14 +78,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ url, reference, forfait: forfait.id })
     }
 
-    const telephone = parsed.data.telephone?.replace(/\D/g, '') ?? ''
-    if (telephone.length < 8) {
-      return NextResponse.json(
-        { error: 'Un numéro Mobile Money est nécessaire pour ce moyen de paiement.' },
-        { status: 422 },
-      )
-    }
-
     const reference = nouvelleReference(document)
     const { url } = await initierPaiement(
       { document, email, nom, telephone: parsed.data.telephone ?? '', reference },
@@ -92,7 +85,7 @@ export async function POST(request: Request) {
     )
     return NextResponse.json({ url, reference, forfait: forfait.id })
   } catch (error) {
-    console.error('[paiement] initialisation impossible :', error)
+    console.error('[paiement] initialisation impossible :', expliquerErreurPaiement(error))
     return NextResponse.json(
       { error: 'Le service de paiement ne répond pas. Réessayez dans un instant.' },
       { status: 502 },

@@ -16,6 +16,28 @@
 
 const exportStatique = process.env.EXPORT_STATIQUE === '1'
 
+/**
+ * Politique de contenu : tout vient du domaine lui-même. Les scripts en ligne
+ * sont ceux que Next injecte pour l'hydratation ; data: et blob: servent aux
+ * images du CV, aux polices et au PDF. La redirection vers la page de
+ * paiement CinetPay est une navigation : elle n'est pas concernée.
+ */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' blob: data:",
+  "worker-src 'self' blob:",
+  "frame-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+  'upgrade-insecure-requests',
+].join('; ')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -43,6 +65,13 @@ const nextConfig = {
                 { key: 'X-Content-Type-Options', value: 'nosniff' },
                 { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
                 { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+                { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+                { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+                // Mêmes règles que deploiement/hostinger/.htaccess : à garder alignées.
+                { key: 'Content-Security-Policy', value: CSP },
+                ...(process.env.NODE_ENV === 'production'
+                  ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000' }]
+                  : []),
               ],
             },
           ]

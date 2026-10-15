@@ -53,8 +53,15 @@ try {
     // Lu par `src/lib/deploiement.ts`, et donc figé dans le JavaScript livré.
     NEXT_PUBLIC_SANS_SERVEUR: '1',
     // Sans serveur, aucune transaction ne peut être vérifiée : le
-    // téléchargement reste libre, comme le veut la règle du projet.
-    NEXT_PUBLIC_PAIEMENT_ACTIF: '0',
+    // téléchargement reste libre, comme le veut la règle du projet — sauf si
+    // le lien de paiement ET la liste d'empreintes de codes sont fournis, ce
+    // qui permet la vérification de code dans le navigateur.
+    NEXT_PUBLIC_PAIEMENT_ACTIF:
+      process.env.NEXT_PUBLIC_PAIEMENT_ACTIF === '1' &&
+      process.env.NEXT_PUBLIC_PAIEMENT_LIEN &&
+      process.env.NEXT_PUBLIC_PAIEMENT_CODES_HASH
+        ? '1'
+        : '0',
   })
 } finally {
   remettreRoutes(ecartees)

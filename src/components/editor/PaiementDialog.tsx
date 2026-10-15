@@ -23,6 +23,7 @@ import {
   dateLisible,
   enregistrerAcces,
   forfaitParId,
+  verifierCodeLocal,
   prixLisible,
   type DocumentPayant,
   type Forfait,
@@ -40,6 +41,7 @@ import { PRINT_LABELS, printDocument } from '@/lib/print'
 import { useAcces } from '@/lib/use-acces'
 import { cn, fullName } from '@/lib/utils'
 import { SITE, whatsappLink } from '@/lib/seo'
+import { SANS_SERVEUR } from '@/lib/deploiement'
 
 type Etape = 'coordonnees' | 'redirection' | 'envoi' | 'envoye' | 'erreur'
 
@@ -696,6 +698,17 @@ function AccesParLien({ onClose }: { onClose: () => void }) {
     setEtat('verification')
     setErreur('')
     try {
+      if (SANS_SERVEUR) {
+        const local = await verifierCodeLocal(code)
+        if (!local) {
+          setErreur('Code invalide. Vérifiez-le ou contactez-nous avec votre preuve de paiement.')
+          setEtat('saisie')
+          return
+        }
+        enregistrerAcces(local)
+        setPaye(true)
+        return
+      }
       const response = await fetch('/api/paiement/code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

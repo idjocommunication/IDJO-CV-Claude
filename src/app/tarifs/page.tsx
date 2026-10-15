@@ -5,7 +5,7 @@ import { PAIEMENT, prixLisible } from '@/lib/paiement'
 
 export const metadata: Metadata = buildMetadata({
   title: `Tarif — création gratuite, téléchargement à ${prixLisible()}`,
-  description: `Composez votre CV et votre lettre gratuitement. Le téléchargement du PDF coûte ${prixLisible()}, une seule fois, pour ${PAIEMENT.dureeJours} jours d'exports illimités. Paiement Wave, Orange Money, MTN, Moov ou carte.`,
+  description: `Composez votre CV et votre lettre gratuitement. Le téléchargement du PDF du CV coûte ${prixLisible()}, une seule fois, pour ${PAIEMENT.dureeJours} jours d'exports illimités. Paiement Wave, Orange Money, MTN, Moov ou carte.`,
   path: '/tarifs',
   keywords: ['CV en ligne Côte d’Ivoire', 'paiement Wave Orange Money', 'CV pas cher Abidjan'],
 })
@@ -17,12 +17,12 @@ export default function PricingPage() {
         <div className="container-content py-16 text-center sm:py-24">
           <p className="eyebrow mb-3">Tarif</p>
           <h1 className="title-xl mx-auto max-w-3xl text-ink">
-            Composez gratuitement. Payez seulement pour télécharger.
+            Composez gratuitement. Payez seulement pour télécharger votre CV.
           </h1>
           <p className="prose-muted mx-auto mt-5 max-w-2xl">
             Vous montez tout votre CV, vous le voyez en A4, vous le corrigez autant que vous
             voulez — sans rien payer et sans créer de compte. Le règlement n’arrive qu’au moment
-            d’emporter le PDF.
+            d’emporter le PDF de votre CV.
           </p>
         </div>
       </section>
@@ -38,7 +38,7 @@ export default function PricingPage() {
             },
             {
               title: 'Aucun abonnement',
-              text: `Un paiement unique ouvre ${PAIEMENT.dureeJours} jours de téléchargements illimités. Rien ne se renouvelle tout seul, aucune carte n’est conservée sur la plateforme.`,
+              text: `Un paiement unique ouvre ${PAIEMENT.dureeJours} jours de téléchargements illimités du CV. Rien ne se renouvelle tout seul, aucune carte n’est conservée sur la plateforme.`,
             },
             {
               title: 'Vous voyez avant de payer',

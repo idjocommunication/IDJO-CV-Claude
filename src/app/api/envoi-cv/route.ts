@@ -83,7 +83,9 @@ export async function POST(request: Request) {
   const { email, html, document: cible, nom, token } = analyse.data
 
   // Téléchargement payant : sans jeton valide, rien ne part.
-  const exigeAcces = PAIEMENT.actif && PAIEMENT.mode === 'bloquant' && paiementConfigure()
+  // La lettre de motivation est gratuite.
+  const exigeAcces =
+    PAIEMENT.actif && PAIEMENT.mode === 'bloquant' && paiementConfigure() && cible !== 'lettre'
   if (exigeAcces && !(token && verifierAcces(token))) {
     return NextResponse.json(
       { error: 'Votre accès au téléchargement n’est plus valide.', code: 'acces-invalide' },

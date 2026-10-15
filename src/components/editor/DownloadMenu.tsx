@@ -53,6 +53,8 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
   const [enGrand, setEnGrand] = useState<PrintTarget | null>(null)
   const { autorise, acces } = useAcces()
   const finAcces = acces?.expire ?? 0
+  /** La lettre de motivation est gratuite ; le CV est payant tant que l'accès n'est pas réglé. */
+  const libre = autorise || current === 'lettre'
   const box = useRef<HTMLDivElement>(null)
 
   useEffect(() => setIntegre(isEmbedded()), [])
@@ -203,11 +205,11 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
           {!autorise ? (
             <div className="mx-2 mb-1.5 rounded-lg bg-azur-50 px-3 py-2.5">
               <p className="text-[11px] font-bold text-navy-700">
-                Téléchargement payant — {prixLisible()}
+                Téléchargement du CV — {prixLisible()}
               </p>
               <p className="mt-1 text-[11px] leading-relaxed text-navy-700/80">
                 La création, l’aperçu et l’assistant restent gratuits. Le règlement ouvre{' '}
-                {PAIEMENT.dureeJours} jours de téléchargements illimités, CV et lettre compris.
+                {PAIEMENT.dureeJours} jours de téléchargements illimités du CV. La lettre de motivation reste gratuite.
               </p>
             </div>
           ) : finAcces ? (
@@ -239,7 +241,7 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
           <MenuItem
             icon={<FileDown size={15} />}
             onClick={() => toPdf('lettre')}
-            hint={!autorise ? prixLisible() : hasLetter ? undefined : 'lettre encore vide'}
+            hint={hasLetter ? 'gratuite' : 'lettre encore vide'}
           >
             Ma lettre de motivation
           </MenuItem>
@@ -273,10 +275,10 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
             Fichier de la lettre (.json)
           </MenuItem>
           <MenuItem
-            icon={autorise ? <FileCode2 size={15} /> : <Lock size={15} />}
+            icon={libre ? <FileCode2 size={15} /> : <Lock size={15} />}
             onClick={() => {
               setOpen(false)
-              if (!autorise) {
+              if (!libre) {
                 setALivrer(current)
                 return
               }
@@ -289,7 +291,7 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
             icon={<Maximize2 size={15} />}
             onClick={() => {
               setOpen(false)
-              if (!autorise) {
+              if (!libre) {
                 setALivrer(current)
                 return
               }

@@ -290,8 +290,8 @@ export function Pricing({ compact = false }: { compact?: boolean }) {
     <section className={cn('container-content', compact ? 'py-14' : 'py-20 sm:py-28')} id="tarifs">
       <SectionHeading
         eyebrow="Tarif"
-        title={`Gratuit pour composer, ${prixLisible()} pour emporter`}
-        description={`Tout l’éditeur est ouvert sans payer : modèles, couleurs, assistant, analyse ATS, lettre. Le règlement n’intervient qu’au téléchargement du PDF — une fois, pour ${PAIEMENT.dureeJours} jours.`}
+        title={`Gratuit pour composer, ${prixLisible()} pour télécharger le CV`}
+        description={`Tout l’éditeur est ouvert sans payer : modèles, couleurs, assistant, analyse ATS, lettre de motivation (PDF compris). Le règlement n’intervient qu’au téléchargement du PDF du CV — une fois, pour ${PAIEMENT.dureeJours} jours.`}
         align="center"
       />
 

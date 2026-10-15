@@ -285,20 +285,17 @@ export function EditorShell() {
       {/* Copies plein format utilisées par l'impression et l'export PDF.
           `data-print` sur <body> choisit celle(s) qui partent à l'imprimante.
           Sans accès réglé, elles ne sont pas rendues : l'impression directe du
-          navigateur ne peut pas contourner le paiement. */}
-      {!rendImpression ? null : autorise ? (
+          navigateur ne peut pas contourner le paiement du CV. */}
+      {!rendImpression ? null : (
         <>
           <div className="print-only print-doc print-doc-cv" aria-hidden>
-            <CvSheet data={data} />
+            {autorise ? <CvSheet data={data} /> : <DocumentVerrouille />}
           </div>
+          {/* La lettre de motivation est gratuite : elle sort toujours. */}
           <div className="print-only print-doc print-doc-lettre" aria-hidden>
             <LetterSheet data={letter} />
           </div>
         </>
-      ) : (
-        <div className="print-only print-doc" aria-hidden>
-          <DocumentVerrouille />
-        </div>
       )}
     </>
   )

@@ -12,10 +12,10 @@ export const OFFRE = {
   name: 'Téléchargement',
   priceLabel: prixLisible(),
   period: `paiement unique · ${PAIEMENT.dureeJours} jours d’accès`,
-  description: 'Le PDF final de votre CV et de votre lettre, prêt à envoyer.',
+  description: 'Le PDF final de votre CV, prêt à envoyer. La lettre de motivation reste gratuite.',
   features: [
     'Export PDF A4 du CV',
-    'Export PDF de la lettre de motivation',
+    'Lettre de motivation : téléchargement toujours gratuit',
     `Téléchargements illimités pendant ${PAIEMENT.dureeJours} jours`,
     'Autant de modifications et de versions que voulu',
     'Wave, Orange Money, MTN, Moov ou carte bancaire',
@@ -123,7 +123,7 @@ export const FAQ = [
   {
     question: 'Qu’est-ce qui est gratuit, qu’est-ce qui est payant ?',
     answer:
-      `La création est entièrement gratuite : les huit modèles, les couleurs, la lettre de motivation, l’analyse ATS, l’assistant et l’import de votre ancien CV. Vous ne payez que le téléchargement du PDF final : ${prixLisible()}, une seule fois, pour ${PAIEMENT.dureeJours} jours de téléchargements illimités.`,
+      `La création est entièrement gratuite : les huit modèles, les couleurs, la lettre de motivation, l’analyse ATS, l’assistant et l’import de votre ancien CV. Vous ne payez que le téléchargement du PDF du CV — la lettre de motivation se télécharge gratuitement, en PDF aussi : ${prixLisible()}, une seule fois, pour ${PAIEMENT.dureeJours} jours de téléchargements illimités.`,
   },
   {
     question: 'Mon CV passera-t-il les logiciels de tri automatique (ATS) ?',

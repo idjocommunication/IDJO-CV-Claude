@@ -78,7 +78,8 @@ export function TelechargementDialog({
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
   const panneau = useRef<HTMLDivElement>(null)
 
-  const doitPayer = !autorise
+  // La lettre de motivation est gratuite : seul le CV passe par le paiement.
+  const doitPayer = !autorise && cible !== 'lettre'
   const forfait = forfaitParId(FORFAIT_PAR_DEFAUT)
 
   // Pré-remplissage : ce que le client a déjà saisi dans son CV.
@@ -226,7 +227,7 @@ export function TelechargementDialog({
             </h2>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
               {doitPayer
-                ? `${prixLisible(forfait.prix)} — ${forfait.dureeJours} jour${forfait.dureeJours > 1 ? 's' : ''} de téléchargements illimités, CV et lettre compris.`
+                ? `${prixLisible(forfait.prix)} — ${forfait.dureeJours} jour${forfait.dureeJours > 1 ? 's' : ''} de téléchargements illimités du CV.`
                 : 'Indiquez l’adresse e-mail sur laquelle vous voulez recevoir votre document.'}
             </p>
           </div>
@@ -714,8 +715,8 @@ function AccesParLien({ onClose }: { onClose: () => void }) {
               Débloquer le téléchargement
             </h2>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
-              {prixLisible()} — {PAIEMENT.dureeJours} jours de téléchargements illimités, CV et
-              lettre compris.
+              {prixLisible()} — {PAIEMENT.dureeJours} jours de téléchargements illimités du CV.
+              La lettre de motivation reste gratuite.
             </p>
           </div>
           <button
@@ -734,7 +735,7 @@ function AccesParLien({ onClose }: { onClose: () => void }) {
               <Check size={30} className="text-azur-600" />
               <p className="text-sm font-semibold text-ink">Téléchargement débloqué</p>
               <p className="max-w-sm text-[12.5px] leading-relaxed text-ink-muted">
-                Vous pouvez télécharger votre CV et votre lettre pendant {PAIEMENT.dureeJours} jours.
+                Vous pouvez télécharger votre CV pendant {PAIEMENT.dureeJours} jours.
               </p>
               <button
                 type="button"

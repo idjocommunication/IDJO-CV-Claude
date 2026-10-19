@@ -233,3 +233,19 @@ Deux points que le code ne peut pas décider à votre place :
 - `src/lib/seo.tsx` et les mentions légales portent des **coordonnées de
   remplacement** : e-mail, téléphone, hébergeur déclaré. Renseignez les
   variables `NEXT_PUBLIC_*` correspondantes.
+
+### Empreintes des codes d'accès
+
+`deploiement/hostinger/empreintes-codes.txt` contient les empreintes SHA-256
+des codes d'accès déjà remis aux clients. Elles sont publiques par nature (le
+site les embarque) et ne permettent pas de retrouver les codes. Pour
+reconstruire l'export statique sans les perdre :
+
+```bash
+NEXT_PUBLIC_PAIEMENT_ACTIF=1 \
+NEXT_PUBLIC_PAIEMENT_LIEN="https://pay.cinetpay.net/link/…" \
+NEXT_PUBLIC_PAIEMENT_CODES_HASH="$(cat deploiement/hostinger/empreintes-codes.txt)" \
+npm run build:statique
+```
+
+En mode serveur, la même variable garde ces codes valables.

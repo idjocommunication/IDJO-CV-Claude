@@ -1,76 +1,29 @@
 import { TEMPLATES } from '@/data/templates'
 import { THEMES } from '@/lib/theme'
+import { joursLisibles, prixLisible } from '@/lib/paiement'
 
 /**
- * Offres réellement disponibles aujourd'hui. Tant qu'il n'existe ni compte ni
- * encaissement en ligne, la plateforme est intégralement gratuite et la seule
- * prestation payante est humaine, réservée par message. Ne rien ajouter ici
- * qui ne soit pas livrable le jour même.
+ * Offre unique : la création, l'aperçu, l'assistant et l'analyse ATS sont
+ * gratuits ; seul le téléchargement du document final est payant, une fois,
+ * par Mobile Money ou carte. Ne rien annoncer ici qui ne soit pas livrable le
+ * jour même.
  */
-/**
- * Offres réellement disponibles. La création, l'aperçu, l'assistant et
- * l'analyse ATS sont gratuits ; seul le téléchargement du document final est
- * payant, par Mobile Money ou carte. Ne rien annoncer ici qui ne soit pas
- * livrable le jour même.
- */
-export const PLANS = [
-  {
-    id: 'creation',
-    name: 'Création',
-    price: 0,
-    priceLabel: '0 F CFA',
-    period: 'sans compte, sans limite de temps',
-    description: 'Composez votre CV et votre lettre, autant que vous voulez.',
-    features: [
-      'Les 8 modèles et les 24 palettes',
-      'Aperçu A4 en temps réel',
-      'Assistant de rédaction',
-      'Analyse ATS de votre CV',
-      'Import d’un CV existant (PDF, Word)',
-      'Sauvegarde .json sur votre appareil',
-    ],
-    cta: 'Créer mon CV',
-    href: '/editeur',
-    highlight: false,
-  },
-  {
-    id: 'telechargement',
-    name: 'Téléchargement',
-    price: 4900,
-    priceLabel: '4 900 F CFA',
-    period: 'paiement unique · 30 jours d’accès',
-    description: 'Le PDF final, prêt à envoyer, sans filigrane.',
-    features: [
-      'Export PDF A4 du CV',
-      'Export PDF de la lettre de motivation',
-      'Téléchargements illimités pendant 30 jours',
-      'Autant de modifications et de versions que voulu',
-      'Wave, Orange Money, MTN, Moov ou carte bancaire',
-      'Aucun abonnement, aucun prélèvement automatique',
-    ],
-    cta: 'Composer puis télécharger',
-    href: '/editeur',
-    highlight: true,
-  },
-  {
-    id: 'accompagnement',
-    name: 'Accompagnement',
-    price: 19000,
-    priceLabel: '19 000 F CFA',
-    period: 'prestation unique, sur rendez-vous',
-    description: 'Un consultant RH relit, réécrit et cible votre candidature.',
-    features: [
-      'Tout le contenu du téléchargement',
-      'Relecture par un consultant RH ivoirien',
-      'Réécriture des accroches et des missions',
-      'Optimisation pour un poste ciblé',
-      'Appel de 30 minutes de préparation',
-    ],
-    cta: 'Demander un créneau',
-    href: '/contact?sujet=accompagnement',
-    highlight: false,
-  },
-] as const
+export const OFFRE = {
+  name: 'Téléchargement',
+  priceLabel: prixLisible(),
+  period: `paiement unique · ${joursLisibles()} d’accès`,
+  description: 'Le PDF final de votre CV, prêt à envoyer. La lettre de motivation reste gratuite.',
+  features: [
+    'Export PDF A4 du CV',
+    'Lettre de motivation : téléchargement toujours gratuit',
+    `Téléchargements illimités pendant ${joursLisibles()}`,
+    'Autant de modifications et de versions que voulu',
+    'Wave, Orange Money, MTN, Moov ou carte bancaire',
+    'Aucun abonnement, aucun prélèvement automatique',
+  ],
+  cta: 'Composer puis télécharger',
+  href: '/editeur',
+} as const
 
 export const FEATURES = [
   {
@@ -147,7 +100,7 @@ export const GUARANTEES = [
   {
     title: 'On paie une fois, on télécharge autant qu’on veut',
     description:
-      'Le PDF est le document final, sans filigrane. Pendant 30 jours, vous le retéléchargez à chaque candidature, avec toutes les modifications que vous voulez.',
+      `Le PDF est le document final, sans filigrane. Pendant ${joursLisibles()}, vous le retéléchargez autant de fois que vous voulez, avec toutes les modifications nécessaires.`,
   },
   {
     title: 'Vos données ne partent pas',
@@ -170,7 +123,7 @@ export const FAQ = [
   {
     question: 'Qu’est-ce qui est gratuit, qu’est-ce qui est payant ?',
     answer:
-      'La création est entièrement gratuite : les huit modèles, les couleurs, la lettre de motivation, l’analyse ATS, l’assistant et l’import de votre ancien CV. Vous ne payez que le téléchargement du PDF final : 4 900 F CFA, une seule fois, pour 30 jours de téléchargements illimités.',
+      `La création est entièrement gratuite : les huit modèles, les couleurs, la lettre de motivation, l’analyse ATS, l’assistant et l’import de votre ancien CV. Vous ne payez que le téléchargement du PDF du CV — la lettre de motivation se télécharge gratuitement, en PDF aussi : ${prixLisible()}, une seule fois, pour ${joursLisibles()} de téléchargements illimités.`,
   },
   {
     question: 'Mon CV passera-t-il les logiciels de tri automatique (ATS) ?',

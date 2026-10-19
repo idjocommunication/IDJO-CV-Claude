@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { PAIEMENT } from '@/lib/paiement'
-import { paiementConfigure, signerAcces, verifierTransaction } from '@/lib/paiement-serveur'
+import {
+  expliquerErreurPaiement,
+  paiementConfigure,
+  signerAcces,
+  verifierTransaction,
+} from '@/lib/paiement-serveur'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,7 +32,7 @@ export async function GET(request: Request) {
     const { token, expire } = signerAcces(reference, dureeJours)
     return NextResponse.json({ etat, token, expire, reference, jours: dureeJours })
   } catch (error) {
-    console.error('[paiement] vérification impossible :', error)
+    console.error('[paiement] vérification impossible :', expliquerErreurPaiement(error))
     return NextResponse.json({ etat: 'en-attente' })
   }
 }

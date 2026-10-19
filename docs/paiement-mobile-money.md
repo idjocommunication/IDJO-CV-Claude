@@ -81,12 +81,15 @@ Dans l'environnement de production (`.env`, Vercel, conteneur…) :
 ```bash
 # Le paiement ne s'active que si cette variable vaut 1
 NEXT_PUBLIC_PAIEMENT_ACTIF="1"
-NEXT_PUBLIC_PAIEMENT_PRIX="4900"        # F CFA, multiple de 5
-NEXT_PUBLIC_PAIEMENT_DUREE_JOURS="30"
+NEXT_PUBLIC_PAIEMENT_PRIX="500"         # F CFA, multiple de 5
+NEXT_PUBLIC_PAIEMENT_DUREE_JOURS="2"
 NEXT_PUBLIC_SITE_URL="https://votre-domaine.ci"
 
-CINETPAY_API_KEY="…"
-CINETPAY_SITE_ID="…"
+# Nouvelle API CinetPay (v1) : clé sk_live_… + mot de passe API
+CINETPAY_API_KEY="sk_live_…"
+CINETPAY_API_PASSWORD="…"
+# Ancienne API seulement : clé + site_id, sans mot de passe
+# CINETPAY_SITE_ID="…"
 
 # Chaîne aléatoire longue : elle signe les accès accordés.
 # openssl rand -base64 48
@@ -94,7 +97,19 @@ PAIEMENT_SECRET="…"
 ```
 
 Il n'y a **rien d'autre à écrire** : les quatre routes `/api/paiement/*` sont
-déjà en place.
+déjà en place. La clé choisit l'API : `sk_test_` / `sk_live_` → API v1
+(`src/lib/cinetpay-v1.ts`), autre clé → ancienne API à `site_id`.
+
+**API v1 — liste blanche d'adresses IP.** CinetPay refuse tout appel venant
+d'une adresse non déclarée (`NOT_ALLOWED`, code 2011). Déclarez dans le
+tableau de bord CinetPay l'adresse IP du serveur qui héberge le site (hPanel →
+Hébergement → Détails du plan). Le journal du serveur l'indique en clair
+quand elle manque : « CinetPay refuse l'adresse IP de ce serveur ».
+
+Quand l'API est branchée, elle passe avant le lien de paiement : le client
+est redirigé vers CinetPay puis revient sur l'éditeur, l'accès s'ouvre seul
+après vérification. Le lien et ses codes d'accès ne servent plus que de repli
+quand l'API n'est pas configurée (ou en export statique).
 
 ### Vérifier avant d'ouvrir au public
 
@@ -219,15 +234,12 @@ Rien d'autre : les routes `/api/paiement/*` reconnaissent l'encaisseur à la
 référence de transaction. Aucune URL n'est à déclarer dans le tableau de bord
 Stripe — l'adresse de retour voyage avec la session.
 
-### Les forfaits
+### Le tarif
 
-Trois forfaits sont proposés, réglables par variables d'environnement :
-
-| Forfait | Variable | Défaut | Accès ouvert |
-|---|---|---|---|
-| Un document | `NEXT_PUBLIC_PAIEMENT_PRIX_DOCUMENT` | 1 000 F | 1 jour |
-| Le dossier | `NEXT_PUBLIC_PAIEMENT_PRIX_DOSSIER` | 2 000 F | 7 jours |
-| Accès long | `NEXT_PUBLIC_PAIEMENT_PRIX` | 4 900 F | `NEXT_PUBLIC_PAIEMENT_DUREE_JOURS` |
+Un seul tarif : `NEXT_PUBLIC_PAIEMENT_PRIX` (500 F par défaut) ouvre
+`NEXT_PUBLIC_PAIEMENT_DUREE_JOURS` jours de téléchargements libres. Avec le lien
+de paiement CinetPay (`NEXT_PUBLIC_PAIEMENT_LIEN`), le montant du lien doit être
+identique à ce prix.
 
 Un forfait n'ouvre pas un document précis mais une **durée** de
 téléchargements libres. La durée du jeton d'accès est celle du forfait

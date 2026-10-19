@@ -8,13 +8,14 @@
 # ---------------------------------------------------------------------------
 # HTTPS
 # ---------------------------------------------------------------------------
-# Décommentez ce bloc une fois le certificat SSL activé dans hPanel, sinon les
-# visiteurs tomberaient sur une redirection vers une adresse qui ne répond pas.
-# <IfModule mod_rewrite.c>
-#   RewriteEngine On
-#   RewriteCond %{HTTPS} off
-#   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-# </IfModule>
+# Le certificat SSL est actif : tout accès en HTTP est redirigé en HTTPS.
+# (À retirer seulement si le certificat n'était plus actif sur le domaine.)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} off
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
 
 # ---------------------------------------------------------------------------
 # URL propres
@@ -44,10 +45,22 @@ ErrorDocument 404 /404.html
   Header always set X-Frame-Options "SAMEORIGIN"
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
   Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
-  # À activer après avoir vérifié le site en HTTPS : une fois envoyé, un
-  # navigateur refusera le HTTP pendant toute la durée annoncée.
-  # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  # Le navigateur n'utilisera plus que le HTTPS pendant un an. Sans
+  # « includeSubDomains » : les sous-domaines éventuels ne sont pas concernés.
+  Header always set Strict-Transport-Security "max-age=31536000"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  # Le site n'appelle aucune ressource externe : tout vient de son propre
+  # domaine. Les scripts en ligne sont ceux que Next.js injecte pour
+  # l'hydratation ; les données (data:) et blob: servent aux images du CV, aux
+  # polices et au PDF.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' blob: data:; worker-src 'self' blob:; frame-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
 </IfModule>
+
+# Ne jamais servir de fichiers cachés, de sauvegardes ou d'archives oubliés.
+<FilesMatch "^\.(?!well-known)|\.(env|bak|old|orig|sql|log|zip|tar|gz|map|sh)$">
+  Require all denied
+</FilesMatch>
+ServerSignature Off
 
 # ---------------------------------------------------------------------------
 # Cache

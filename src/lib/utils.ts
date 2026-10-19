@@ -30,7 +30,7 @@ export function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
-/** Prix en FCFA : 4 900 F CFA */
+/** Prix en FCFA : 500 F CFA */
 export function formatFcfa(amount: number) {
   return `${new Intl.NumberFormat('fr-FR').format(amount).replace(/\s/g, ' ')} F CFA`
 }

@@ -1,6 +1,19 @@
-import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
-import { PAIEMENT, type DocumentPayant, type Fournisseur } from '@/lib/paiement'
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
+import {
+  PAIEMENT,
+  joursLisibles,
+  normaliserCode,
+  type DocumentPayant,
+  type Fournisseur,
+} from '@/lib/paiement'
 import { estReferenceStripe, stripeConfigure, verifierSessionStripe } from '@/lib/stripe-serveur'
+import {
+  ErreurCinetpay,
+  cinetpayV1Configure,
+  estCleV1,
+  initierPaiementV1,
+  verifierPaiementV1,
+} from '@/lib/cinetpay-v1'
 
 /**
  * Côté serveur du paiement.
@@ -13,9 +26,17 @@ import { estReferenceStripe, stripeConfigure, verifierSessionStripe } from '@/li
 
 const SECRET = process.env.PAIEMENT_SECRET ?? ''
 
-/** CinetPay est-il branché ? (Mobile Money et cartes en F CFA) */
+/**
+ * CinetPay est-il branché ? (Mobile Money et cartes en F CFA)
+ *
+ * Deux générations d'API coexistent chez CinetPay : la v1 (clé `sk_test_` /
+ * `sk_live_` + mot de passe API) et l'ancienne (clé + `site_id`). La clé
+ * fournie décide laquelle est utilisée.
+ */
 export function cinetpayConfigure() {
-  return Boolean(process.env.CINETPAY_API_KEY && process.env.CINETPAY_SITE_ID && SECRET)
+  if (!SECRET) return false
+  if (estCleV1(process.env.CINETPAY_API_KEY)) return cinetpayV1Configure()
+  return Boolean(process.env.CINETPAY_API_KEY && process.env.CINETPAY_SITE_ID)
 }
 
 /** Encaisseurs réellement utilisables sur ce site, dans l'ordre d'affichage. */
@@ -77,6 +98,17 @@ export function verifierCode(saisie: string) {
   return { serie: m[1] }
 }
 
+/**
+ * Codes publiés pour l'export statique (empreintes SHA-256) : ils restent
+ * valables sur le serveur, même si `PAIEMENT_SECRET` a changé entre-temps.
+ */
+export function verifierCodePublie(saisie: string) {
+  const code = normaliserCode(saisie)
+  if (code.length !== 12) return null
+  const empreinte = createHash('sha256').update(code).digest('hex')
+  return PAIEMENT.codesHash.includes(empreinte) ? { serie: code.slice(0, 4) } : null
+}
+
 /* ------------------------------------------------------------------ */
 /* Jeton d'accès                                                       */
 /* ------------------------------------------------------------------ */
@@ -135,13 +167,15 @@ export interface DemandePaiement {
  * où l'utilisateur choisit Wave, Orange Money, MTN, Moov ou sa carte.
  */
 export async function initierPaiement(demande: DemandePaiement, origine: string) {
+  if (cinetpayV1Configure()) return initierPaiementV1(demande, origine)
+
   const corps = {
     apikey: process.env.CINETPAY_API_KEY,
     site_id: process.env.CINETPAY_SITE_ID,
     transaction_id: demande.reference,
     amount: PAIEMENT.prix,
     currency: PAIEMENT.devise,
-    description: `IDJÔ CV — accès ${PAIEMENT.dureeJours} jours au téléchargement`,
+    description: `IDJÔ CV — accès ${joursLisibles()} au téléchargement`,
     channels: demande.canal || 'ALL',
     lang: 'FR',
     metadata: demande.document,
@@ -209,6 +243,8 @@ export async function verifierTransaction(
  * de vérité : ni le retour du navigateur ni le corps du webhook ne suffisent.
  */
 export async function verifierPaiement(reference: string): Promise<EtatPaiement> {
+  if (cinetpayV1Configure()) return verifierPaiementV1(reference)
+
   const reponse = await fetch(`${CINETPAY}/payment/check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -235,4 +271,15 @@ export async function verifierPaiement(reference: string): Promise<EtatPaiement>
 
   if (statut === 'REFUSED' || statut === 'CANCELED' || json?.code === '627') return 'refuse'
   return 'en-attente'
+}
+
+/**
+ * Message de journal lisible pour l'exploitant : l'erreur la plus probable à
+ * la mise en ligne est une adresse IP du serveur non déclarée chez CinetPay.
+ */
+export function expliquerErreurPaiement(erreur: unknown) {
+  if (erreur instanceof ErreurCinetpay && erreur.ipNonAutorisee) {
+    return "CinetPay refuse l'adresse IP de ce serveur : ajoutez-la à la liste blanche du tableau de bord CinetPay."
+  }
+  return erreur instanceof Error ? erreur.message : String(erreur)
 }

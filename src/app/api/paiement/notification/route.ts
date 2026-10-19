@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { verifierPaiement } from '@/lib/paiement-serveur'
+import { expliquerErreurPaiement, verifierPaiement } from '@/lib/paiement-serveur'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,16 +11,34 @@ export const dynamic = 'force-dynamic'
  * la transaction auprès de CinetPay. La notification sert de filet quand
  * l'utilisateur ferme son navigateur avant de revenir — l'accès sera délivré
  * à sa prochaine visite, à partir de la même référence.
+ *
+ * L'API v1 envoie du JSON (`merchant_transaction_id`), l'ancienne API un
+ * formulaire (`cpm_trans_id`) : les deux sont lus.
  */
+async function lireReference(request: Request) {
+  const parametre = new URL(request.url).searchParams
+  const type = request.headers.get('content-type') ?? ''
+
+  if (type.includes('application/json')) {
+    const json = (await request.json().catch(() => null)) as Record<string, unknown> | null
+    const valeur = json?.merchant_transaction_id ?? json?.transaction_id
+    if (typeof valeur === 'string') return valeur
+  } else {
+    const corps = await request.formData().catch(() => null)
+    const valeur = corps?.get('cpm_trans_id') ?? corps?.get('merchant_transaction_id')
+    if (typeof valeur === 'string') return valeur
+  }
+  return parametre.get('merchant_transaction_id') ?? parametre.get('transaction_id')
+}
+
 export async function POST(request: Request) {
-  const corps = await request.formData().catch(() => null)
-  const reference =
-    (corps?.get('cpm_trans_id') as string | null) ??
-    new URL(request.url).searchParams.get('transaction_id')
+  const reference = (await lireReference(request))?.trim()
+  if (!reference || reference.length > 200) return NextResponse.json({ ok: true })
 
-  if (!reference) return NextResponse.json({ ok: true })
-
-  const etat = await verifierPaiement(reference).catch(() => 'en-attente' as const)
+  const etat = await verifierPaiement(reference).catch((erreur: unknown) => {
+    console.error('[paiement] notification illisible :', expliquerErreurPaiement(erreur))
+    return 'en-attente' as const
+  })
   console.info('[paiement] notification', reference, '→', etat)
 
   return NextResponse.json({ ok: true })

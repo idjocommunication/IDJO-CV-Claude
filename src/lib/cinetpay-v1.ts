@@ -1,4 +1,4 @@
-import { PAIEMENT } from '@/lib/paiement'
+import { PAIEMENT, joursLisibles } from '@/lib/paiement'
 
 /**
  * API CinetPay v1 — comptes ouverts sur la nouvelle plateforme CinetPay.
@@ -169,7 +169,7 @@ export async function initierPaiementV1(demande: DemandeV1, origine: string) {
     merchant_transaction_id: demande.reference,
     amount: PAIEMENT.prix,
     lang: 'fr',
-    designation: `IDJO CV - acces ${PAIEMENT.dureeJours} jours`,
+    designation: `IDJO CV - acces ${joursLisibles()}`,
     client_email: demande.email,
     client_first_name: nomValide(prenom, 'Client'),
     client_last_name: nomValide(reste.join(' '), 'IDJO'),

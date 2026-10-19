@@ -22,6 +22,7 @@ import {
   dateLisible,
   enregistrerAcces,
   forfaitParId,
+  joursLisibles,
   verifierCodeLocal,
   prixLisible,
   type DocumentPayant,
@@ -705,7 +706,7 @@ function AccesParLien({ onClose }: { onClose: () => void }) {
               Débloquer le téléchargement
             </h2>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
-              {prixLisible()} — {PAIEMENT.dureeJours} jours de téléchargements illimités du CV.
+              {prixLisible()} — {joursLisibles()} de téléchargements illimités du CV.
               La lettre de motivation reste gratuite.
             </p>
           </div>
@@ -725,7 +726,7 @@ function AccesParLien({ onClose }: { onClose: () => void }) {
               <Check size={30} className="text-azur-600" />
               <p className="text-sm font-semibold text-ink">Téléchargement débloqué</p>
               <p className="max-w-sm text-[12.5px] leading-relaxed text-ink-muted">
-                Vous pouvez télécharger votre CV pendant {PAIEMENT.dureeJours} jours.
+                Vous pouvez télécharger votre CV pendant {joursLisibles()}.
               </p>
               <button
                 type="button"

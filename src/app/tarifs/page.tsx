@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 import { FaqSection, FinalCta, Pricing } from '@/components/landing/Sections'
 import { buildMetadata } from '@/lib/seo'
-import { PAIEMENT, prixLisible } from '@/lib/paiement'
+import { joursLisibles, prixLisible } from '@/lib/paiement'
 
 export const metadata: Metadata = buildMetadata({
   title: `Tarif — création gratuite, téléchargement à ${prixLisible()}`,
-  description: `Composez votre CV et votre lettre gratuitement. Le téléchargement du PDF du CV coûte ${prixLisible()}, une seule fois, pour ${PAIEMENT.dureeJours} jours d'exports illimités. Paiement Wave, Orange Money, MTN, Moov ou carte.`,
+  description: `Composez votre CV et votre lettre gratuitement. Le téléchargement du PDF du CV coûte ${prixLisible()}, une seule fois, pour ${joursLisibles()} d'exports illimités. Paiement Wave, Orange Money, MTN, Moov ou carte.`,
   path: '/tarifs',
   keywords: ['CV en ligne Côte d’Ivoire', 'paiement Wave Orange Money', 'CV pas cher Abidjan'],
 })
@@ -38,7 +38,7 @@ export default function PricingPage() {
             },
             {
               title: 'Aucun abonnement',
-              text: `Un paiement unique ouvre ${PAIEMENT.dureeJours} jours de téléchargements illimités du CV. Rien ne se renouvelle tout seul, aucune carte n’est conservée sur la plateforme.`,
+              text: `Un paiement unique ouvre ${joursLisibles()} de téléchargements illimités du CV. Rien ne se renouvelle tout seul, aucune carte n’est conservée sur la plateforme.`,
             },
             {
               title: 'Vous voyez avant de payer',

@@ -1,5 +1,11 @@
-import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
-import { PAIEMENT, type DocumentPayant, type Fournisseur } from '@/lib/paiement'
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
+import {
+  PAIEMENT,
+  joursLisibles,
+  normaliserCode,
+  type DocumentPayant,
+  type Fournisseur,
+} from '@/lib/paiement'
 import { estReferenceStripe, stripeConfigure, verifierSessionStripe } from '@/lib/stripe-serveur'
 import {
   ErreurCinetpay,
@@ -92,6 +98,17 @@ export function verifierCode(saisie: string) {
   return { serie: m[1] }
 }
 
+/**
+ * Codes publiés pour l'export statique (empreintes SHA-256) : ils restent
+ * valables sur le serveur, même si `PAIEMENT_SECRET` a changé entre-temps.
+ */
+export function verifierCodePublie(saisie: string) {
+  const code = normaliserCode(saisie)
+  if (code.length !== 12) return null
+  const empreinte = createHash('sha256').update(code).digest('hex')
+  return PAIEMENT.codesHash.includes(empreinte) ? { serie: code.slice(0, 4) } : null
+}
+
 /* ------------------------------------------------------------------ */
 /* Jeton d'accès                                                       */
 /* ------------------------------------------------------------------ */
@@ -158,7 +175,7 @@ export async function initierPaiement(demande: DemandePaiement, origine: string)
     transaction_id: demande.reference,
     amount: PAIEMENT.prix,
     currency: PAIEMENT.devise,
-    description: `IDJÔ CV — accès ${PAIEMENT.dureeJours} jours au téléchargement`,
+    description: `IDJÔ CV — accès ${joursLisibles()} au téléchargement`,
     channels: demande.canal || 'ALL',
     lang: 'FR',
     metadata: demande.document,

@@ -29,7 +29,7 @@ import {
   type PrintTarget,
 } from '@/lib/print'
 import { TelechargementDialog } from '@/components/editor/PaiementDialog'
-import { PAIEMENT, dateLisible, prixLisible, type DocumentPayant } from '@/lib/paiement'
+import { joursLisibles, dateLisible, prixLisible, type DocumentPayant } from '@/lib/paiement'
 import { useAcces } from '@/lib/use-acces'
 import { cn, fullName } from '@/lib/utils'
 
@@ -209,7 +209,7 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
               </p>
               <p className="mt-1 text-[11px] leading-relaxed text-navy-700/80">
                 La création, l’aperçu et l’assistant restent gratuits. Le règlement ouvre{' '}
-                {PAIEMENT.dureeJours} jours de téléchargements illimités du CV. La lettre de motivation reste gratuite.
+                {joursLisibles()} de téléchargements illimités du CV. La lettre de motivation reste gratuite.
               </p>
             </div>
           ) : finAcces ? (

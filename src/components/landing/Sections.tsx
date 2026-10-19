@@ -16,7 +16,7 @@ import { ButtonLink } from '@/components/ui/Button'
 import { TemplateCard } from '@/components/landing/TemplateCard'
 import { AutoScaleLetter } from '@/components/ui/AutoScaleLetter'
 import { TEMPLATES } from '@/data/templates'
-import { PAIEMENT, prixLisible } from '@/lib/paiement'
+import { joursLisibles, prixLisible } from '@/lib/paiement'
 import { FAQ, FEATURES, GUARANTEES, OFFRE, STATS, STEPS } from '@/data/marketing'
 import { cn } from '@/lib/utils'
 
@@ -291,7 +291,7 @@ export function Pricing({ compact = false }: { compact?: boolean }) {
       <SectionHeading
         eyebrow="Tarif"
         title={`Gratuit pour composer, ${prixLisible()} pour télécharger le CV`}
-        description={`Tout l’éditeur est ouvert sans payer : modèles, couleurs, assistant, analyse ATS, lettre de motivation (PDF compris). Le règlement n’intervient qu’au téléchargement du PDF du CV — une fois, pour ${PAIEMENT.dureeJours} jours.`}
+        description={`Tout l’éditeur est ouvert sans payer : modèles, couleurs, assistant, analyse ATS, lettre de motivation (PDF compris). Le règlement n’intervient qu’au téléchargement du PDF du CV — une fois, pour ${joursLisibles()}.`}
         align="center"
       />
 

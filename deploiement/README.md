@@ -195,7 +195,7 @@ atteindre le navigateur.
    | `NEXT_PUBLIC_SITE_URL` | `https://xn--idjcv-8ta.com` (adresse publique exacte, sert aux retours CinetPay) |
    | `NEXT_PUBLIC_PAIEMENT_ACTIF` | `1` |
    | `NEXT_PUBLIC_PAIEMENT_PRIX` | `500` (= montant facturé) |
-   | `NEXT_PUBLIC_PAIEMENT_DUREE_JOURS` | `30` |
+   | `NEXT_PUBLIC_PAIEMENT_DUREE_JOURS` | `2` |
    | `NEXT_PUBLIC_PAIEMENT_LIEN` | lien CinetPay de production (repli) |
    | `PAIEMENT_SECRET` | longue chaîne aléatoire (`openssl rand -base64 48`) |
    | `CINETPAY_API_KEY` | `sk_live_…` |

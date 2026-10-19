@@ -82,7 +82,7 @@ Dans l'environnement de production (`.env`, Vercel, conteneur…) :
 # Le paiement ne s'active que si cette variable vaut 1
 NEXT_PUBLIC_PAIEMENT_ACTIF="1"
 NEXT_PUBLIC_PAIEMENT_PRIX="500"         # F CFA, multiple de 5
-NEXT_PUBLIC_PAIEMENT_DUREE_JOURS="30"
+NEXT_PUBLIC_PAIEMENT_DUREE_JOURS="2"
 NEXT_PUBLIC_SITE_URL="https://votre-domaine.ci"
 
 # Nouvelle API CinetPay (v1) : clé sk_live_… + mot de passe API

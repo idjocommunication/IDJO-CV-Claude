@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { PAIEMENT } from '@/lib/paiement'
-import { codesConfigure, signerAcces, verifierCode } from '@/lib/paiement-serveur'
+import {
+  codesConfigure,
+  signerAcces,
+  verifierCode,
+  verifierCodePublie,
+} from '@/lib/paiement-serveur'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -18,7 +23,9 @@ export async function POST(request: Request) {
   }
 
   const parsed = schema.safeParse(await request.json().catch(() => null))
-  const valide = parsed.success ? verifierCode(parsed.data.code) : null
+  const valide = parsed.success
+    ? (verifierCode(parsed.data.code) ?? verifierCodePublie(parsed.data.code))
+    : null
   if (!valide) {
     return NextResponse.json(
       { error: 'Code invalide. Vérifiez-le ou contactez-nous avec votre preuve de paiement.' },

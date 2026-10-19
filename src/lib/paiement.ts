@@ -49,8 +49,13 @@ export const PAIEMENT = {
     .map((h) => h.trim())
     .filter(Boolean),
   devise: 'XOF',
-  dureeJours: nombre(process.env.NEXT_PUBLIC_PAIEMENT_DUREE_JOURS, 30),
+  dureeJours: nombre(process.env.NEXT_PUBLIC_PAIEMENT_DUREE_JOURS, 2),
 } as const
+
+/** « 2 jours », « 1 jour » */
+export function joursLisibles(jours: number = PAIEMENT.dureeJours) {
+  return `${jours} jour${jours > 1 ? 's' : ''}`
+}
 
 export function prixLisible(montant: number = PAIEMENT.prix) {
   return `${montant.toLocaleString('fr-FR').replace(/ | /g, ' ')} F CFA`
@@ -84,7 +89,7 @@ export interface Forfait {
 export const FORFAITS: Forfait[] = [
   {
     id: 'mois',
-    nom: `Acc\u00e8s ${PAIEMENT.dureeJours} jours`,
+    nom: `Acc\u00e8s ${joursLisibles()}`,
     resume: 'T\u00e9l\u00e9chargements illimit\u00e9s, CV et lettre, autant de versions que voulu.',
     prix: PAIEMENT.prix,
     dureeJours: PAIEMENT.dureeJours,

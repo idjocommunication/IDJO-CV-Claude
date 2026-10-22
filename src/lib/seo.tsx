@@ -9,7 +9,7 @@ import { PAIEMENT } from '@/lib/paiement'
  */
 export const SITE = {
   name: 'IDJÔ CV',
-  domain: 'idjocv.ci',
+  domain: 'idjôcv.com',
   url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://idjocv.ci',
   email: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? 'idjocommunication@gmail.com',
   /** Format international, ex. « +225 07 07 12 34 56 ». Vide = bloc masqué. */

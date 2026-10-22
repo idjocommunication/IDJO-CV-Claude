@@ -99,7 +99,7 @@ const PAGES: LegalPage[] = [
       {
         heading: 'Offres et paiement',
         paragraphs: [
-          'L’usage de l’éditeur, des modèles, de la lettre de motivation et de l’assistant est gratuit et ne nécessite aucun compte. Seul le téléchargement du PDF du CV est payant (la lettre de motivation se télécharge gratuitement) : un règlement unique en francs CFA ouvre un accès de téléchargements illimités pendant une durée annoncée au moment du paiement.',
+          'L’usage de l’éditeur, des modèles, de la lettre de motivation et de l’assistant est gratuit et ne nécessite aucun compte. Seul le téléchargement du PDF du CV est payant (la lettre de motivation se télécharge gratuitement) : chaque règlement en francs CFA ouvre un téléchargement du CV, à utiliser dans les 24 heures sur l’appareil qui a payé. Si l’enregistrement du PDF échoue, un nouvel essai est proposé sans nouveau règlement tant que la fenêtre de téléchargement reste ouverte.',
           'Aucun renouvellement automatique n’est appliqué. Le prix affiché au moment de la commande est le prix dû.',
         ],
       },

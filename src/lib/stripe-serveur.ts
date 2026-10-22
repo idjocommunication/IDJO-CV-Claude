@@ -1,4 +1,4 @@
-import { PAIEMENT, forfaitParId, type DocumentPayant, type Forfait } from '@/lib/paiement'
+import { forfaitParId, type DocumentPayant, type Forfait } from '@/lib/paiement'
 
 /**
  * Encaissement par carte bancaire, via Stripe Checkout.
@@ -99,7 +99,7 @@ export async function creerSessionStripe(demande: DemandeStripe, origine: string
     'line_items[0][price_data][unit_amount]': String(montantStripe(forfait.prix)),
     'line_items[0][price_data][product_data][name]': `IDJÔ CV — ${forfait.nom}`,
     'line_items[0][price_data][product_data][description]': forfait.resume,
-    // Relus à la vérification : ils décident de la durée du jeton d'accès.
+    // Relus à la vérification, pour contrôler le montant réglé.
     'metadata[forfait]': forfait.id,
     'metadata[document]': document,
     'metadata[prix_fcfa]': String(forfait.prix),
@@ -112,7 +112,7 @@ export async function creerSessionStripe(demande: DemandeStripe, origine: string
   return { url, reference: `${PREFIXE}${id}` }
 }
 
-export type EtatStripe = { etat: 'paye'; dureeJours: number } | { etat: 'en-attente' | 'refuse' }
+export type EtatStripe = { etat: 'paye' | 'en-attente' | 'refuse' }
 
 /**
  * Interroge Stripe sur l'état réel d'une session.
@@ -140,5 +140,5 @@ export async function verifierSessionStripe(reference: string): Promise<EtatStri
   // Tolérance d'une unité pour absorber les arrondis de conversion.
   if (!Number.isFinite(regle) || regle + 1 < attendu) return { etat: 'refuse' }
 
-  return { etat: 'paye', dureeJours: forfait.dureeJours || PAIEMENT.dureeJours }
+  return { etat: 'paye' }
 }

@@ -15,15 +15,16 @@ et le téléchargement reste libre.
 ## 1. Le parcours vu par le client
 
 1. Il clique sur **Télécharger le PDF**.
-2. Une fenêtre lui demande ses coordonnées :
-   - l'**e-mail** sur lequel il recevra son CV en PDF ;
-   - le **numéro Mobile Money** qui sera débité ;
-   - son nom (exigé par l'agrégateur pour la transaction).
+2. Une fenêtre lui demande son e-mail et son nom (exigés par l'agrégateur pour
+   la transaction). Le numéro Mobile Money se saisit chez l'agrégateur.
 3. Il est envoyé sur la page sécurisée de l'agrégateur, choisit Wave, Orange
    Money, MTN, Moov ou sa carte, et valide le débit sur son téléphone.
-4. De retour sur le site, la transaction est vérifiée auprès de l'agrégateur ;
-   **le CV part alors automatiquement en PDF sur son e-mail**, et le
-   téléchargement direct s'ouvre sur l'appareil.
+4. De retour sur le site, la transaction est vérifiée auprès de l'agrégateur :
+   **un** téléchargement du CV est ouvert (500 F CFA = un téléchargement).
+   Si l'envoi par e-mail est actif, le CV part aussi en PDF sur son e-mail.
+5. Il enregistre son PDF, puis confirme « Oui, mon PDF est enregistré » et
+   revient à l'accueil. Tant qu'il n'a pas confirmé, il peut réessayer sans
+   repayer (impression relancée, fichier `.html`, affichage en grand).
 
 Aucun numéro complet, aucun code secret, aucun solde ne transite par IDJÔ CV.
 Le site ne conserve ni le document, ni l'adresse e-mail.
@@ -81,8 +82,7 @@ Dans l'environnement de production (`.env`, Vercel, conteneur…) :
 ```bash
 # Le paiement ne s'active que si cette variable vaut 1
 NEXT_PUBLIC_PAIEMENT_ACTIF="1"
-NEXT_PUBLIC_PAIEMENT_PRIX="500"         # F CFA, multiple de 5
-NEXT_PUBLIC_PAIEMENT_DUREE_JOURS="2"
+NEXT_PUBLIC_PAIEMENT_PRIX="500"         # F CFA par téléchargement, multiple de 5
 NEXT_PUBLIC_SITE_URL="https://votre-domaine.ci"
 
 # Nouvelle API CinetPay (v1) : clé sk_live_… + mot de passe API
@@ -186,8 +186,10 @@ curl https://votre-domaine.ci/api/envoi-cv
 | Fichier | Rôle |
 |---|---|
 | `src/components/editor/PaiementDialog.tsx` | Fenêtre de coordonnées (e-mail + numéro débité), puis bandeau de retour de paiement |
-| `src/lib/paiement.ts` | Tarif, canaux affichés, accès conservé dans le navigateur |
+| `src/lib/paiement.ts` | Tarif, canaux affichés, téléchargement payé conservé dans le navigateur |
+| `src/lib/telechargement.ts` · `SeanceTelechargement.tsx` | Séance de téléchargement : le droit est consommé au premier essai, nouvel essai possible, retour à l'accueil |
 | `src/lib/paiement-serveur.ts` | Dialogue CinetPay, signature HMAC des accès |
+| `src/lib/registre.ts` | Registre des paiements, codes et envois déjà délivrés (un seul téléchargement chacun) |
 | `src/app/api/paiement/initier` | Ouvre la transaction, renvoie l'adresse de paiement |
 | `src/app/api/paiement/statut` | Vérifie auprès de CinetPay et délivre le jeton d'accès |
 | `src/app/api/paiement/retour` · `notification` | Retour client (GET/POST) et notification serveur à serveur |
@@ -201,8 +203,12 @@ Règles de sécurité respectées par cette implémentation :
   du webhook : il est **relu auprès de CinetPay** ;
 - un règlement inférieur au tarif n'ouvre aucun accès ;
 - l'accès est un HMAC signé côté serveur, sans base de données ;
-- tant que l'accès n'est pas accordé, les copies imprimables ne sont pas dans
-  la page : un `Ctrl+P` ne contourne pas le paiement ;
+- un paiement n'ouvre qu'un téléchargement : le jeton n'est délivré qu'une fois
+  par transaction (dix minutes de tolérance pour une réponse perdue) et jamais
+  pour une transaction de plus de 24 h ; le registre (`PAIEMENT_REGISTRE`) en
+  garde la trace hors du dossier de l'application ;
+- hors d'une séance de téléchargement payée, la copie imprimable du CV est
+  verrouillée : un `Ctrl+P` ne contourne pas le paiement ;
 - le HTML reçu par `/api/envoi-cv` est nettoyé et imprimé sans exécution de
   script ;
 - la sauvegarde `.json` reste gratuite : ces données appartiennent au client.
@@ -236,15 +242,10 @@ Stripe — l'adresse de retour voyage avec la session.
 
 ### Le tarif
 
-Un seul tarif : `NEXT_PUBLIC_PAIEMENT_PRIX` (500 F par défaut) ouvre
-`NEXT_PUBLIC_PAIEMENT_DUREE_JOURS` jours de téléchargements libres. Avec le lien
-de paiement CinetPay (`NEXT_PUBLIC_PAIEMENT_LIEN`), le montant du lien doit être
-identique à ce prix.
-
-Un forfait n'ouvre pas un document précis mais une **durée** de
-téléchargements libres. La durée du jeton d'accès est celle du forfait
-réellement réglé, relue dans la session Stripe — pas celle annoncée par le
-navigateur.
+Un seul tarif : `NEXT_PUBLIC_PAIEMENT_PRIX` (500 F par défaut) ouvre **un**
+téléchargement du CV, à utiliser dans les 24 heures. Avec le lien de paiement
+CinetPay (`NEXT_PUBLIC_PAIEMENT_LIEN`), le montant du lien doit être identique
+à ce prix, et chaque code d'accès remis n'ouvre lui aussi qu'un téléchargement.
 
 ### Ce qui est vérifié avant d'ouvrir l'accès
 

@@ -1,10 +1,11 @@
 /**
  * Accès payant au téléchargement.
  *
- * La création et l'aperçu du CV restent gratuits ; seul l'export du document
- * final est payant. Un règlement ouvre un accès daté, matérialisé par un jeton
- * signé côté serveur et conservé dans le navigateur — il n'y a toujours ni
- * compte ni base de données obligatoire.
+ * La création et l'aperçu du CV restent gratuits ; seul l'export du CV est
+ * payant, à l'unité : un règlement ouvre **un** téléchargement. Ce droit est
+ * matérialisé par un jeton signé côté serveur, conservé dans le navigateur
+ * jusqu'à son usage — il n'y a toujours ni compte ni base de données
+ * obligatoire.
  *
  * Ce module est isomorphe : les constantes servent au serveur comme au client.
  */
@@ -49,13 +50,12 @@ export const PAIEMENT = {
     .map((h) => h.trim())
     .filter(Boolean),
   devise: 'XOF',
-  dureeJours: nombre(process.env.NEXT_PUBLIC_PAIEMENT_DUREE_JOURS, 2),
+  /**
+   * Délai pour utiliser un téléchargement payé, en heures. Passé ce délai, le
+   * droit inutilisé disparaît du navigateur.
+   */
+  validiteHeures: 24,
 } as const
-
-/** « 2 jours », « 1 jour » */
-export function joursLisibles(jours: number = PAIEMENT.dureeJours) {
-  return `${jours} jour${jours > 1 ? 's' : ''}`
-}
 
 export function prixLisible(montant: number = PAIEMENT.prix) {
   return `${montant.toLocaleString('fr-FR').replace(/ | /g, ' ')} F CFA`
@@ -74,29 +74,22 @@ export interface Forfait {
   resume: string
   /** Montant en francs CFA. */
   prix: number
-  /** Durée d'accès illimité ouverte par l'achat. */
-  dureeJours: number
 }
 
 /**
- * Ce qu'un client peut acheter. Un forfait n'ouvre pas un document précis mais
- * une **durée** de téléchargements libres : c'est ce que le jeton d'accès sait
- * déjà porter, et cela évite d'avoir à pister quel document a été payé sur
- * quel appareil.
- *
- * Un seul tarif : celui du lien de paiement CinetPay.
+ * Ce qu'un client peut acheter : un téléchargement du CV, au tarif du lien de
+ * paiement CinetPay. Chaque nouvelle version se paie à nouveau.
  */
 export const FORFAITS: Forfait[] = [
   {
-    id: 'mois',
-    nom: `Acc\u00e8s ${joursLisibles()}`,
-    resume: 'T\u00e9l\u00e9chargements illimit\u00e9s, CV et lettre, autant de versions que voulu.',
+    id: 'telechargement',
+    nom: 'T\u00e9l\u00e9chargement du CV',
+    resume: 'Un t\u00e9l\u00e9chargement de votre CV en PDF. La lettre de motivation reste gratuite.',
     prix: PAIEMENT.prix,
-    dureeJours: PAIEMENT.dureeJours,
   },
 ]
 
-export const FORFAIT_PAR_DEFAUT = 'mois'
+export const FORFAIT_PAR_DEFAUT = 'telechargement'
 
 export function forfaitParId(id: string | undefined | null) {
   return FORFAITS.find((f) => f.id === id) ?? FORFAITS[FORFAITS.length - 1]
@@ -117,10 +110,11 @@ export const MOYENS = [
 
 const CLE = 'idjo-cv:acces'
 
+/** Un téléchargement payé, pas encore utilisé. */
 export interface Acces {
   /** Jeton signé par le serveur : `reference.expiration.signature`. */
   token: string
-  /** Fin de validité, en millisecondes. */
+  /** Date limite d'utilisation, en millisecondes. */
   expire: number
   reference: string
 }
@@ -148,6 +142,7 @@ export function enregistrerAcces(acces: Acces) {
   window.dispatchEvent(new Event('idjo-acces'))
 }
 
+/** Retire le droit du navigateur : utilisé, ou expiré. */
 export function oublierAcces() {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(CLE)
@@ -170,20 +165,17 @@ export async function verifierCodeLocal(saisie: string): Promise<Acces | null> {
   const empreinte = Array.from(new Uint8Array(octets), (o) => o.toString(16).padStart(2, '0')).join('')
   if (!PAIEMENT.codesHash.includes(empreinte)) return null
 
-  const expire = Date.now() + PAIEMENT.dureeJours * 24 * 60 * 60 * 1000
+  const expire = Date.now() + PAIEMENT.validiteHeures * 60 * 60 * 1000
   const reference = `CODE-${empreinte.slice(0, 8)}`
   return { token: `LOCAL.${expire}.${empreinte.slice(0, 16)}`, expire, reference }
 }
 
-/** Le téléchargement est-il autorisé en l'état ? */
-export function telechargementAutorise() {
-  if (!PAIEMENT.actif || PAIEMENT.mode === 'libre') return true
-  return lireAcces() !== null
+/** Le CV doit-il être payé pour sortir du site ? */
+export function paiementRequis() {
+  return PAIEMENT.actif && PAIEMENT.mode !== 'libre'
 }
 
-/** « 12 septembre 2026 » */
-export function dateLisible(millisecondes: number) {
-  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(
-    new Date(millisecondes),
-  )
+/** Le téléchargement est-il autorisé en l'état ? */
+export function telechargementAutorise() {
+  return !paiementRequis() || lireAcces() !== null
 }

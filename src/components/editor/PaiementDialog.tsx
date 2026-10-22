@@ -19,10 +19,9 @@ import {
   PAIEMENT,
   FORFAIT_PAR_DEFAUT,
   MOYENS,
-  dateLisible,
   enregistrerAcces,
   forfaitParId,
-  joursLisibles,
+  lireAcces,
   verifierCodeLocal,
   prixLisible,
   type DocumentPayant,
@@ -36,7 +35,13 @@ import {
   oublierLivraison,
   retenirLivraison,
 } from '@/lib/envoi'
-import { PRINT_LABELS, printDocument } from '@/lib/print'
+import { PRINT_LABELS } from '@/lib/print'
+import {
+  lancerTelechargement,
+  ouvrirSeanceMaintenant,
+  terminerSeance,
+  useTelechargement,
+} from '@/lib/telechargement'
 import { useAcces } from '@/lib/use-acces'
 import { cn, fullName } from '@/lib/utils'
 import { SITE, whatsappLink } from '@/lib/seo'
@@ -70,6 +75,8 @@ export function TelechargementDialog({
 }) {
   const profil = useCvStore((s) => s.data.profile)
   const { autorise } = useAcces()
+  /** Téléchargement payé déjà en cours d'usage dans cette page. */
+  const seancePayee = useTelechargement((s) => Boolean(s.seance?.payee))
   const [etape, setEtape] = useState<Etape>('coordonnees')
   const [erreur, setErreur] = useState('')
   /** L'envoi par e-mail est-il actif sur ce site ? `null` tant qu'on l'ignore. */
@@ -82,7 +89,7 @@ export function TelechargementDialog({
   const panneau = useRef<HTMLDivElement>(null)
 
   // La lettre de motivation est gratuite : seul le CV passe par le paiement.
-  const doitPayer = !autorise && cible !== 'lettre'
+  const doitPayer = !autorise && !seancePayee && cible !== 'lettre'
   const forfait = forfaitParId(FORFAIT_PAR_DEFAUT)
 
   // Pré-remplissage : ce que le client a déjà saisi dans son CV.
@@ -166,6 +173,13 @@ export function TelechargementDialog({
   }
 
   const envoyer = async () => {
+    // L'envoi compte comme le téléchargement : la séance s'ouvre, et la copie
+    // imprimable du CV avec elle.
+    if (!ouvrirSeanceMaintenant(cible)) {
+      setErreur('Aucun téléchargement payé n’est disponible pour ce document.')
+      setEtape('erreur')
+      return
+    }
     setEtape('envoi')
     setErreur('')
     retenirLivraison({ email: form.email.trim(), nom: form.nom.trim(), document: cible })
@@ -188,15 +202,15 @@ export function TelechargementDialog({
       resultat === 'inactif'
         ? 'L’envoi par e-mail n’est pas encore actif sur ce site. Votre document reste téléchargeable ici.'
         : resultat === 'acces-invalide'
-          ? 'Votre accès au téléchargement a expiré. Réglez à nouveau pour recevoir votre document.'
+          ? 'Ce téléchargement a déjà servi ou a expiré. Réglez à nouveau pour recevoir votre document.'
           : 'L’envoi n’a pas abouti. Réessayez, ou téléchargez votre document sur cet appareil.',
     )
     setEtape('erreur')
   }
 
   const telecharger = () => {
-    onTelecharger(cible)
     onClose()
+    onTelecharger(cible)
   }
 
   // Paiement par lien CinetPay : règlement externe, puis code d'accès.
@@ -234,8 +248,10 @@ export function TelechargementDialog({
             </h2>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
               {doitPayer
-                ? `${prixLisible(forfait.prix)} — ${forfait.dureeJours} jour${forfait.dureeJours > 1 ? 's' : ''} de téléchargements illimités du CV.`
-                : 'Indiquez l’adresse e-mail sur laquelle vous voulez recevoir votre document.'}
+                ? `${prixLisible(forfait.prix)} — un téléchargement de votre CV en PDF.`
+                : envoiActif
+                  ? 'Indiquez l’adresse e-mail sur laquelle vous voulez recevoir votre document.'
+                  : 'Votre document est prêt à être enregistré sur cet appareil.'}
             </p>
           </div>
           <button
@@ -316,30 +332,36 @@ export function TelechargementDialog({
                     </li>
                     <li>
                       <strong className="text-ink">4.</strong>{' '}
-                      {envoiActif === false
-                        ? 'Votre PDF se télécharge aussitôt sur cet appareil.'
-                        : 'Votre PDF arrive sur votre e-mail.'}
+                      {envoiActif
+                        ? 'Votre PDF arrive sur votre e-mail.'
+                        : 'Vous enregistrez votre PDF sur cet appareil.'}
+                    </li>
+                    <li>
+                      <strong className="text-ink">5.</strong> Un paiement = un téléchargement :
+                      chaque nouvelle version du CV se paie à nouveau.
                     </li>
                   </ol>
                 </>
               ) : null}
 
               <div className="grid gap-4">
-                <Field
-                  label="E-mail"
-                  hint={
-                    envoiActif === false
-                      ? 'L’envoi par e-mail n’est pas encore actif : votre PDF se télécharge ici.'
-                      : 'Vous y recevez votre CV en PDF, en pièce jointe.'
-                  }
-                >
-                  <TextInput
-                    type="email"
-                    value={form.email}
-                    onChange={(v) => setForm((f) => ({ ...f, email: v }))}
-                    placeholder="prenom.nom@email.ci"
-                  />
-                </Field>
+                {doitPayer || envoiActif ? (
+                  <Field
+                    label="E-mail"
+                    hint={
+                      envoiActif
+                        ? 'Vous y recevez votre CV en PDF, en pièce jointe.'
+                        : 'Transmise à CinetPay pour le paiement. Votre PDF s’enregistre sur cet appareil.'
+                    }
+                  >
+                    <TextInput
+                      type="email"
+                      value={form.email}
+                      onChange={(v) => setForm((f) => ({ ...f, email: v }))}
+                      placeholder="prenom.nom@email.ci"
+                    />
+                  </Field>
+                ) : null}
 
                 {doitPayer ? (
                   <>
@@ -364,7 +386,9 @@ export function TelechargementDialog({
                 <ShieldCheck size={14} className="mt-0.5 shrink-0 text-azur-600" />
                 {doitPayer
                   ? 'Le règlement s’effectue sur la page sécurisée de notre partenaire de paiement. IDJÔ CV ne voit ni votre code secret, ni votre solde, ni vos identifiants bancaires.'
-                  : 'Votre adresse sert uniquement à l’envoi de ce document. Elle n’est ni conservée sur nos serveurs, ni transmise à qui que ce soit.'}
+                  : envoiActif
+                    ? 'Votre adresse sert uniquement à l’envoi de ce document. Elle n’est ni conservée sur nos serveurs, ni transmise à qui que ce soit.'
+                    : 'Après l’enregistrement de votre PDF, vous revenez à l’accueil. Votre CV reste enregistré sur cet appareil.'}
               </p>
             </>
           ) : null}
@@ -400,7 +424,7 @@ export function TelechargementDialog({
                 </div>
               ) : (
                 <>
-                  {envoiActif === false ? null : (
+                  {!envoiActif ? null : (
                     <button
                       type="button"
                       disabled={!pretAValider}
@@ -416,7 +440,7 @@ export function TelechargementDialog({
                     onClick={telecharger}
                     className={cn(
                       'inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-cloud-400 text-[14px] font-semibold text-ink transition-colors hover:border-azur-400 hover:text-navy-700',
-                      envoiActif === false ? 'h-12 border-0 bg-azur-btn text-white' : 'mt-2',
+                      !envoiActif ? 'h-12 border-0 bg-azur-btn text-white' : 'mt-2',
                     )}
                   >
                     <Download size={16} />
@@ -438,18 +462,19 @@ export function TelechargementDialog({
             <>
               <button
                 type="button"
-                onClick={telecharger}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-cloud-400 text-[14px] font-semibold text-ink transition-colors hover:border-azur-400 hover:text-navy-700"
+                onClick={terminerSeance}
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-azur-btn text-[15px] font-semibold text-white transition-[filter] hover:brightness-110"
               >
-                <Download size={16} />
-                Télécharger aussi sur cet appareil
+                <Check size={17} />
+                Terminer
               </button>
               <button
                 type="button"
-                onClick={onClose}
-                className="mt-2 w-full text-center text-[12px] font-semibold text-ink-muted underline underline-offset-2 hover:text-ink"
+                onClick={telecharger}
+                className="mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-cloud-400 text-[14px] font-semibold text-ink transition-colors hover:border-azur-400 hover:text-navy-700"
               >
-                Fermer
+                <Download size={16} />
+                Télécharger aussi sur cet appareil
               </button>
             </>
           ) : null}
@@ -463,12 +488,12 @@ export function TelechargementDialog({
  * Bandeau de retour de paiement. Il interroge l'agrégateur tant que la
  * transaction n'est pas confirmée : sur Mobile Money, la validation par
  * l'utilisateur peut prendre une minute. Dès que le débit est confirmé, le
- * document part sur l'adresse indiquée avant le paiement.
+ * téléchargement payé est prêt ; si l'envoi par e-mail est actif, le document
+ * part aussi sur l'adresse indiquée avant le paiement.
  */
 export function RetourPaiement({ reference, onFini }: { reference: string; onFini: () => void }) {
-  const [etat, setEtat] = useState<'attente' | 'paye' | 'refuse'>('attente')
-  const [expire, setExpire] = useState(0)
-  const [envoi, setEnvoi] = useState<'aucun' | 'encours' | 'envoye' | 'inactif' | 'echec'>('aucun')
+  const [etat, setEtat] = useState<'attente' | 'paye' | 'refuse' | 'utilise'>('attente')
+  const [envoi, setEnvoi] = useState<'aucun' | 'encours' | 'envoye' | 'echec'>('aucun')
   const [destinataire, setDestinataire] = useState('')
   const [cible, setCible] = useState<DocumentPayant>('cv')
 
@@ -491,8 +516,17 @@ export function RetourPaiement({ reference, onFini }: { reference: string; onFin
         if (json.etat === 'paye' && json.token && json.expire) {
           enregistrerAcces({ token: json.token, expire: json.expire, reference })
           window.sessionStorage.removeItem('idjo-cv:paiement-en-cours')
-          setExpire(json.expire)
+          // Un rechargement de la page ne doit pas redemander le téléchargement.
+          const adresse = new URL(window.location.href)
+          adresse.searchParams.delete('paiement')
+          window.history.replaceState(null, '', adresse)
           setEtat('paye')
+          return
+        }
+        if (json.etat === 'utilise') {
+          // Déjà délivré, mais peut-être encore inutilisé sur cet appareil.
+          setEtat(lireAcces()?.reference === reference ? 'paye' : 'utilise')
+          window.sessionStorage.removeItem('idjo-cv:paiement-en-cours')
           return
         }
         if (json.etat === 'refuse') {
@@ -514,30 +548,38 @@ export function RetourPaiement({ reference, onFini }: { reference: string; onFin
     }
   }, [reference])
 
-  // Débit confirmé : le document part sur l'adresse laissée avant le paiement.
+  // Débit confirmé : le document demandé avant le paiement, et l'envoi par
+  // e-mail quand il est actif — l'envoi compte alors comme le téléchargement.
   useEffect(() => {
     if (etat !== 'paye') return
     const livraison = lireLivraison()
     if (!livraison) return
-
-    setDestinataire(livraison.email)
     setCible(livraison.document as DocumentPayant)
-    setEnvoi('encours')
 
-    // L'accès vient d'être accordé : les copies imprimables ne sont dans la
-    // page qu'au rendu suivant.
-    const minuteur = window.setTimeout(async () => {
+    let vivant = true
+    void envoiDisponible().then(async (actif) => {
+      if (!vivant || !actif || !ouvrirSeanceMaintenant(livraison.document)) return
+      setDestinataire(livraison.email)
+      setEnvoi('encours')
       const resultat = await envoyerParEmail({
         document: livraison.document,
         email: livraison.email,
         nom: livraison.nom,
       })
-      setEnvoi(resultat === 'envoye' ? 'envoye' : resultat === 'inactif' ? 'inactif' : 'echec')
+      if (!vivant) return
+      setEnvoi(resultat === 'envoye' ? 'envoye' : 'echec')
       if (resultat === 'envoye') oublierLivraison()
-    }, 600)
+    })
 
-    return () => window.clearTimeout(minuteur)
+    return () => {
+      vivant = false
+    }
   }, [etat])
+
+  const telecharger = () => {
+    if (lancerTelechargement(cible)) onFini()
+    else setEtat('utilise')
+  }
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[105] px-4 pb-4 sm:bottom-6 sm:right-6 sm:left-auto sm:px-0">
@@ -546,9 +588,9 @@ export function RetourPaiement({ reference, onFini }: { reference: string; onFin
           'mx-auto flex max-w-md items-start gap-3 rounded-2xl border p-4 shadow-float',
           etat === 'paye'
             ? 'border-azur-300 bg-white'
-            : etat === 'refuse'
-              ? 'border-amber-300 bg-amber-50'
-              : 'border-cloud-400 bg-white',
+            : etat === 'attente'
+              ? 'border-cloud-400 bg-white'
+              : 'border-amber-300 bg-amber-50',
         )}
         role="status"
       >
@@ -561,14 +603,18 @@ export function RetourPaiement({ reference, onFini }: { reference: string; onFin
               ? 'Confirmation du paiement…'
               : etat === 'paye'
                 ? 'Paiement confirmé'
-                : 'Paiement non confirmé'}
+                : etat === 'utilise'
+                  ? 'Téléchargement déjà utilisé'
+                  : 'Paiement non confirmé'}
           </p>
           <p className="mt-1 text-[12px] leading-relaxed text-ink-muted">
             {etat === 'attente'
               ? 'Validez la demande sur votre téléphone. Cette page se met à jour toute seule.'
               : etat === 'paye'
-                ? `Téléchargements ouverts jusqu’au ${dateLisible(expire)}.`
-                : 'Aucun règlement n’a été enregistré pour cette transaction. Si votre compte a été débité, écrivez-nous avec la référence ci-dessous.'}
+                ? `Votre téléchargement est prêt. Il reste disponible ${PAIEMENT.validiteHeures} h sur cet appareil : un paiement donne droit à un téléchargement.`
+                : etat === 'utilise'
+                  ? 'Ce paiement a déjà servi à télécharger votre CV. Une nouvelle version demande un nouveau règlement.'
+                  : 'Aucun règlement n’a été enregistré pour cette transaction. Si votre compte a été débité, écrivez-nous avec la référence ci-dessous.'}
           </p>
 
           {etat === 'paye' && envoi !== 'aucun' ? (
@@ -589,21 +635,37 @@ export function RetourPaiement({ reference, onFini }: { reference: string; onFin
                 ? `Envoi de votre PDF vers ${destinataire}…`
                 : envoi === 'envoye'
                   ? `PDF envoyé à ${destinataire}.`
-                  : envoi === 'inactif'
-                    ? 'Ce site n’envoie pas encore les documents par e-mail : récupérez votre PDF ci-dessous.'
-                    : 'L’envoi par e-mail n’a pas abouti : téléchargez votre document ci-dessous.'}
+                  : 'L’envoi par e-mail n’a pas abouti : téléchargez votre document ci-dessous.'}
             </p>
           ) : null}
 
           {etat === 'paye' ? (
-            <button
-              type="button"
-              onClick={() => printDocument(cible)}
-              className="mt-2.5 inline-flex h-9 items-center gap-2 rounded-full bg-ink px-4 text-[12.5px] font-semibold text-white hover:bg-ink-soft"
-            >
-              <Download size={14} />
-              Télécharger maintenant
-            </button>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {envoi === 'envoye' ? (
+                <button
+                  type="button"
+                  onClick={terminerSeance}
+                  className="inline-flex h-9 items-center gap-2 rounded-full bg-ink px-4 text-[12.5px] font-semibold text-white hover:bg-ink-soft"
+                >
+                  <Check size={14} />
+                  Terminer
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={envoi === 'encours'}
+                onClick={telecharger}
+                className={cn(
+                  'inline-flex h-9 items-center gap-2 rounded-full px-4 text-[12.5px] font-semibold disabled:opacity-50',
+                  envoi === 'envoye'
+                    ? 'border border-cloud-400 text-ink hover:border-azur-400'
+                    : 'bg-ink text-white hover:bg-ink-soft',
+                )}
+              >
+                <Download size={14} />
+                {envoi === 'envoye' ? 'Télécharger aussi ici' : 'Télécharger maintenant'}
+              </button>
+            </div>
           ) : null}
 
           {etat !== 'attente' ? (
@@ -706,8 +768,8 @@ function AccesParLien({ onClose }: { onClose: () => void }) {
               Débloquer le téléchargement
             </h2>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
-              {prixLisible()} — {joursLisibles()} de téléchargements illimités du CV.
-              La lettre de motivation reste gratuite.
+              {prixLisible()} — un téléchargement du CV. La lettre de motivation reste
+              gratuite.
             </p>
           </div>
           <button
@@ -726,7 +788,8 @@ function AccesParLien({ onClose }: { onClose: () => void }) {
               <Check size={30} className="text-azur-600" />
               <p className="text-sm font-semibold text-ink">Téléchargement débloqué</p>
               <p className="max-w-sm text-[12.5px] leading-relaxed text-ink-muted">
-                Vous pouvez télécharger votre CV pendant {joursLisibles()}.
+                Votre code ouvre un téléchargement de votre CV, à utiliser dans les{' '}
+                {PAIEMENT.validiteHeures} h sur cet appareil.
               </p>
               <button
                 type="button"

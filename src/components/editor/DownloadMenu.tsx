@@ -13,47 +13,35 @@ import {
   Info,
   Lock,
   Maximize2,
-  Printer,
 } from 'lucide-react'
-import { CvSheet } from '@/cv-templates'
-import { LetterSheet } from '@/cv-templates/LetterSheet'
 import { useCvStore } from '@/lib/store'
 import { useLetterStore } from '@/lib/letter'
-import {
-  PRINT_LABELS,
-  copyToClipboard,
-  downloadJson,
-  downloadPrintableHtml,
-  isEmbedded,
-  printDocument,
-  type PrintTarget,
-} from '@/lib/print'
+import { copyToClipboard, downloadJson, isEmbedded, type PrintTarget } from '@/lib/print'
 import { TelechargementDialog } from '@/components/editor/PaiementDialog'
-import { joursLisibles, dateLisible, prixLisible, type DocumentPayant } from '@/lib/paiement'
+import { paiementRequis, prixLisible, type DocumentPayant } from '@/lib/paiement'
+import { lancerTelechargement, type Moyen } from '@/lib/telechargement'
 import { useAcces } from '@/lib/use-acces'
 import { cn, fullName } from '@/lib/utils'
 
 /**
  * Bouton « Télécharger » commun au CV et à la lettre. Les PDF passent par la
- * boîte d'impression du navigateur (« Enregistrer au format PDF »), les
- * sauvegardes `.json` se téléchargent directement.
+ * boîte d'impression du navigateur (« Enregistrer au format PDF ») au sein
+ * d'une séance de téléchargement (voir `lib/telechargement.ts`) ; les
+ * sauvegardes `.json` se téléchargent directement et restent gratuites.
  */
 export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
   const cv = useCvStore((s) => s.data)
   const letter = useLetterStore((s) => s.data)
   const [open, setOpen] = useState(false)
-  /** Cible dont l'impression a été bloquée par le navigateur, le cas échéant. */
-  const [bloque, setBloque] = useState<PrintTarget | null>(null)
   const [copie, setCopie] = useState('')
   /** Aperçu intégré : le cadre y interdit impression et téléchargements. */
   const [integre, setIntegre] = useState(false)
   /** Document dont on demande la livraison (e-mail, puis paiement si besoin). */
   const [aLivrer, setALivrer] = useState<DocumentPayant | null>(null)
-  /** Document affiché en grand, pour une impression déclenchée à la main. */
-  const [enGrand, setEnGrand] = useState<PrintTarget | null>(null)
   const { autorise, acces } = useAcces()
-  const finAcces = acces?.expire ?? 0
-  /** La lettre de motivation est gratuite ; le CV est payant tant que l'accès n'est pas réglé. */
+  /** Un téléchargement payé attend d'être utilisé. */
+  const telechargementPaye = paiementRequis() && acces !== null
+  /** La lettre de motivation est gratuite ; le CV est payant tant que le téléchargement n'est pas réglé. */
   const libre = autorise || current === 'lettre'
   const box = useRef<HTMLDivElement>(null)
 
@@ -86,24 +74,24 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
     window.setTimeout(() => setCopie(''), 6000)
   }
 
-  /** Impression immédiate sur cet appareil, une fois l'accès acquis. */
-  const imprimer = (target: PrintTarget) => {
-    setBloque(null)
-    // Laisse la boîte se refermer avant d'ouvrir la fenêtre d'impression.
-    window.setTimeout(() => {
-      if (printDocument(target) === 'bloque') setBloque(target)
-    }, 60)
-  }
-
   /**
    * Toute demande de PDF passe d'abord par les coordonnées : c'est là que le
-   * client indique l'adresse qui recevra son document, et le numéro à débiter
-   * quand le téléchargement est payant.
+   * client indique l'adresse qui recevra son document, et règle le
+   * téléchargement quand il est payant.
    */
   const toPdf = (target: PrintTarget) => {
     setOpen(false)
-    setBloque(null)
     setALivrer(target)
+  }
+
+  /** Fichier imprimable ou aperçu en grand : même séance, même règlement. */
+  const autreMoyen = (moyen: Moyen) => {
+    setOpen(false)
+    if (!libre) {
+      setALivrer(current)
+      return
+    }
+    lancerTelechargement(current, moyen)
   }
 
   return (
@@ -128,57 +116,6 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
         </button>
       </div>
 
-      {bloque ? (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[300px] rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-float">
-          <p className="text-[13px] font-bold text-amber-900">Impression bloquée</p>
-          <p className="mt-1.5 text-[12px] leading-relaxed text-amber-900/80">
-            {integre
-              ? 'Cet aperçu est affiché dans un cadre qui interdit l’impression et les téléchargements. Ouvrez le site dans un onglet pour obtenir votre PDF.'
-              : 'Votre navigateur a empêché l’ouverture de la fenêtre d’impression. Autorisez les fenêtres surgissantes pour ce site, ou téléchargez le document : il s’ouvre dans n’importe quel navigateur et s’imprime en PDF.'}
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              downloadPrintableHtml(bloque, `idjo-${bloque}-${slug}.html`)
-              setBloque(null)
-            }}
-            className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-full bg-ink px-4 text-[13px] font-semibold text-white hover:bg-ink-soft"
-          >
-            <FileCode2 size={14} />
-            Télécharger le document
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setEnGrand(bloque)
-              setBloque(null)
-            }}
-            className="mt-2 inline-flex h-9 w-full items-center justify-center gap-2 rounded-full border border-amber-300 bg-white px-4 text-[13px] font-semibold text-amber-900 hover:bg-amber-100"
-          >
-            <Maximize2 size={14} />
-            Afficher en grand, puis Ctrl+P
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              copier(bloque === 'lettre' ? 'lettre' : 'cv')
-              setBloque(null)
-            }}
-            className="mt-2 inline-flex h-9 w-full items-center justify-center gap-2 rounded-full border border-amber-300 bg-white px-4 text-[13px] font-semibold text-amber-900 hover:bg-amber-100"
-          >
-            <ClipboardCopy size={14} />
-            Copier la sauvegarde
-          </button>
-          <button
-            type="button"
-            onClick={() => setBloque(null)}
-            className="mt-2 w-full text-[12px] font-semibold text-amber-900/70 underline underline-offset-2"
-          >
-            Fermer
-          </button>
-        </div>
-      ) : null}
-
       {copie ? (
         <div className="absolute right-0 top-full z-50 mt-2 w-[300px] rounded-xl border border-azur-300 bg-azur-50 px-4 py-3 shadow-float">
           <p className="flex items-start gap-2 text-[12px] font-semibold leading-relaxed text-navy-700">
@@ -192,12 +129,8 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
         <TelechargementDialog
           document={aLivrer}
           onClose={() => setALivrer(null)}
-          onTelecharger={imprimer}
+          onTelecharger={(cible) => lancerTelechargement(cible)}
         />
-      ) : null}
-
-      {enGrand ? (
-        <ApercuImpression cible={enGrand} onClose={() => setEnGrand(null)} />
       ) : null}
 
       {open ? (
@@ -208,13 +141,13 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
                 Téléchargement du CV — {prixLisible()}
               </p>
               <p className="mt-1 text-[11px] leading-relaxed text-navy-700/80">
-                La création, l’aperçu et l’assistant restent gratuits. Le règlement ouvre{' '}
-                {joursLisibles()} de téléchargements illimités du CV. La lettre de motivation reste gratuite.
+                La création, l’aperçu et l’assistant restent gratuits. Chaque téléchargement du CV
+                coûte {prixLisible()}. La lettre de motivation reste gratuite.
               </p>
             </div>
-          ) : finAcces ? (
+          ) : telechargementPaye ? (
             <p className="mx-2 mb-1.5 rounded-lg bg-cloud px-3 py-2 text-[11px] font-semibold text-ink-muted">
-              Accès ouvert jusqu’au {dateLisible(finAcces)}
+              1 téléchargement payé du CV vous attend
             </p>
           ) : null}
 
@@ -276,27 +209,13 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
           </MenuItem>
           <MenuItem
             icon={libre ? <FileCode2 size={15} /> : <Lock size={15} />}
-            onClick={() => {
-              setOpen(false)
-              if (!libre) {
-                setALivrer(current)
-                return
-              }
-              downloadPrintableHtml(current, `idjo-${current}-${slug}.html`)
-            }}
+            onClick={() => autreMoyen('fichier')}
           >
             Document imprimable (.html)
           </MenuItem>
           <MenuItem
-            icon={<Maximize2 size={15} />}
-            onClick={() => {
-              setOpen(false)
-              if (!libre) {
-                setALivrer(current)
-                return
-              }
-              setEnGrand(current)
-            }}
+            icon={libre ? <Maximize2 size={15} /> : <Lock size={15} />}
+            onClick={() => autreMoyen('grand')}
           >
             Afficher en grand, puis Ctrl+P
           </MenuItem>
@@ -324,69 +243,6 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
           </p>
         </div>
       ) : null}
-    </div>
-  )
-}
-
-/**
- * Le document en grand, dans la page.
- *
- * Dernier recours universel : quand un navigateur refuse l'impression déclenchée
- * par un bouton, il n'empêche jamais l'utilisateur d'imprimer lui-même la page
- * qu'il a sous les yeux. Les copies `.print-only` étant déjà dans le document,
- * un Ctrl+P depuis cet écran sort exactement le bon PDF.
- */
-function ApercuImpression({ cible, onClose }: { cible: PrintTarget; onClose: () => void }) {
-  const cv = useCvStore((s) => s.data)
-  const letter = useLetterStore((s) => s.data)
-
-  useEffect(() => {
-    const precedent = document.body.dataset.print
-    document.body.dataset.print = cible
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => {
-      if (precedent) document.body.dataset.print = precedent
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [cible, onClose])
-
-  return (
-    <div className="no-print fixed inset-0 z-[120] flex flex-col bg-navy-900/80 backdrop-blur-sm">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-3">
-        <p className="text-[13px] font-semibold text-white">
-          {PRINT_LABELS[cible]} — appuyez sur <kbd className="rounded bg-white/15 px-1.5">Ctrl</kbd>
-          {' + '}
-          <kbd className="rounded bg-white/15 px-1.5">P</kbd> (ou{' '}
-          <kbd className="rounded bg-white/15 px-1.5">⌘</kbd>
-          {' + '}
-          <kbd className="rounded bg-white/15 px-1.5">P</kbd>) puis « Enregistrer au format PDF ».
-        </p>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => printDocument(cible)}
-            className="inline-flex h-9 items-center gap-2 rounded-full bg-white px-4 text-[13px] font-semibold text-ink hover:bg-azur-100"
-          >
-            <Printer size={14} />
-            Imprimer
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 items-center rounded-full border border-white/30 px-4 text-[13px] font-semibold text-white hover:bg-white/10"
-          >
-            Fermer
-          </button>
-        </div>
-      </header>
-
-      <div className="flex-1 overflow-auto px-4 py-6">
-        <div className="mx-auto flex w-full max-w-[794px] flex-col gap-6">
-          {cible !== 'lettre' ? <CvSheet data={cv} className="shadow-page" /> : null}
-          {cible !== 'cv' ? <LetterSheet data={letter} className="shadow-page" /> : null}
-        </div>
-      </div>
     </div>
   )
 }

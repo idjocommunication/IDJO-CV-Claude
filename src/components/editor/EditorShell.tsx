@@ -21,12 +21,14 @@ import { AssistantPanel } from '@/components/assistant/AssistantPanel'
 import { DownloadMenu } from '@/components/editor/DownloadMenu'
 import { RetourPaiement } from '@/components/editor/PaiementDialog'
 import { DocumentVerrouille } from '@/components/editor/DocumentVerrouille'
+import { SeanceTelechargement } from '@/components/editor/SeanceTelechargement'
 import { ImportCv } from '@/components/editor/ImportCv'
 import { Logo } from '@/components/site/Logo'
 import { useCvStore } from '@/lib/store'
 import { useLetterStore } from '@/lib/letter'
 import { useProprietaireImpression } from '@/lib/print-registry'
-import { useAcces } from '@/lib/use-acces'
+import { paiementRequis } from '@/lib/paiement'
+import { useTelechargement } from '@/lib/telechargement'
 import { TEMPLATES } from '@/data/templates'
 import type { TemplateId } from '@/lib/types'
 import { clamp, cn } from '@/lib/utils'
@@ -71,7 +73,9 @@ export function EditorShell() {
   const data = useCvStore((s) => s.data)
   const setSettings = useCvStore((s) => s.setSettings)
   const letter = useLetterStore((s) => s.data)
-  const { autorise } = useAcces()
+  /** Le CV ne sort qu'au sein d'une séance de téléchargement payée. */
+  const seancePayee = useTelechargement((s) => Boolean(s.seance?.payee))
+  const cvImprimable = !paiementRequis() || seancePayee
   const rendImpression = useProprietaireImpression()
 
   const [mounted, setMounted] = useState(false)
@@ -284,12 +288,13 @@ export function EditorShell() {
 
       {/* Copies plein format utilisées par l'impression et l'export PDF.
           `data-print` sur <body> choisit celle(s) qui partent à l'imprimante.
-          Sans accès réglé, elles ne sont pas rendues : l'impression directe du
-          navigateur ne peut pas contourner le paiement du CV. */}
+          Hors séance de téléchargement payée, le CV n'est pas rendu :
+          l'impression directe du navigateur ne peut pas contourner le paiement. */}
       {!rendImpression ? null : (
         <>
+          <SeanceTelechargement />
           <div className="print-only print-doc print-doc-cv" aria-hidden>
-            {autorise ? <CvSheet data={data} /> : <DocumentVerrouille />}
+            {cvImprimable ? <CvSheet data={data} /> : <DocumentVerrouille />}
           </div>
           {/* La lettre de motivation est gratuite : elle sort toujours. */}
           <div className="print-only print-doc print-doc-lettre" aria-hidden>

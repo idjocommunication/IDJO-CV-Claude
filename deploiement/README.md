@@ -182,10 +182,12 @@ atteindre le navigateur.
 
 1. **CinetPay** : passer le compte en production, relever la clé `sk_live_…`
    et le mot de passe API, recréer le lien de paiement en production.
-2. **Liste blanche CinetPay** : y ajouter l'adresse IP du serveur Hostinger
-   (hPanel → Hébergement → Détails du plan → adresse IP). Le serveur du site
-   (`srv1905`) répond à l'adresse `193.203.168.199` : à confirmer dans hPanel,
-   car l'adresse de sortie peut différer.
+2. **Liste blanche CinetPay** : y ajouter l'adresse IP **de sortie** du
+   serveur, celle que CinetPay voit : `46.202.172.231` en octobre 2026. Elle
+   diffère de l'adresse publique du site (`193.203.168.199`). Les appels
+   partent en IPv4 ; si CinetPay refuse un jour le serveur (changement de
+   machine chez Hostinger), le journal Node.js affiche la nouvelle adresse à
+   déclarer : « CinetPay refuse l'adresse IP de ce serveur (x.x.x.x) ».
 3. **Variables d'environnement** (hPanel → Sites → Node.js → Variables
    d'environnement), à saisir **vous-même** dans hPanel plutôt qu'à faire
    circuler par message :
@@ -194,8 +196,7 @@ atteindre le navigateur.
    | --- | --- |
    | `NEXT_PUBLIC_SITE_URL` | `https://xn--idjcv-8ta.com` (adresse publique exacte, sert aux retours CinetPay) |
    | `NEXT_PUBLIC_PAIEMENT_ACTIF` | `1` |
-   | `NEXT_PUBLIC_PAIEMENT_PRIX` | `500` (= montant facturé) |
-   | `NEXT_PUBLIC_PAIEMENT_DUREE_JOURS` | `2` |
+   | `NEXT_PUBLIC_PAIEMENT_PRIX` | `500` (= montant facturé par téléchargement) |
    | `NEXT_PUBLIC_PAIEMENT_LIEN` | lien CinetPay de production (repli) |
    | `PAIEMENT_SECRET` | longue chaîne aléatoire (`openssl rand -base64 48`) |
    | `CINETPAY_API_KEY` | `sk_live_…` |
@@ -248,4 +249,8 @@ NEXT_PUBLIC_PAIEMENT_CODES_HASH="$(cat deploiement/hostinger/empreintes-codes.tx
 npm run build:statique
 ```
 
-En mode serveur, la même variable garde ces codes valables.
+En mode serveur, la même variable garde ces codes valables. Chaque code n'ouvre
+qu'un téléchargement : le serveur note l'empreinte des codes utilisés dans son
+registre (`PAIEMENT_REGISTRE`, par défaut `~/.idjo-cv/registre-telechargements.txt`).
+En export statique, sans serveur, le navigateur ne peut pas savoir qu'un code a
+déjà servi ailleurs : un code ressaisi rouvre un téléchargement.

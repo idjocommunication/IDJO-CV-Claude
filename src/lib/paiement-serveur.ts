@@ -1,7 +1,6 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import {
   PAIEMENT,
-  joursLisibles,
   normaliserCode,
   type DocumentPayant,
   type Fournisseur,
@@ -19,9 +18,11 @@ import {
  * Côté serveur du paiement.
  *
  * Deux responsabilités : parler à l'agrégateur mobile money, et signer les
- * accès accordés. On ne stocke rien : la référence de transaction voyage avec
- * l'utilisateur, et c'est l'agrégateur qui fait foi sur le fait qu'elle est
- * réglée. Le jeton d'accès est un HMAC, vérifiable sans base de données.
+ * accès accordés. La référence de transaction voyage avec l'utilisateur, et
+ * c'est l'agrégateur qui fait foi sur le fait qu'elle est réglée. Le jeton
+ * d'accès est un HMAC, vérifiable sans base de données ; seul un registre des
+ * droits déjà délivrés est tenu, pour qu'un paiement n'ouvre qu'un
+ * téléchargement (voir `registre.ts`).
  */
 
 const SECRET = process.env.PAIEMENT_SECRET ?? ''
@@ -117,8 +118,9 @@ function signature(charge: string) {
   return createHmac('sha256', SECRET).update(charge).digest('base64url')
 }
 
-export function signerAcces(reference: string, dureeJours = PAIEMENT.dureeJours) {
-  const expire = Date.now() + dureeJours * 24 * 60 * 60 * 1000
+/** Jeton d'un téléchargement, à utiliser dans les `validiteHeures` qui suivent. */
+export function signerAcces(reference: string) {
+  const expire = Date.now() + PAIEMENT.validiteHeures * 60 * 60 * 1000
   const charge = `${reference}.${expire}`
   return { token: `${charge}.${signature(charge)}`, expire }
 }
@@ -152,6 +154,19 @@ export function nouvelleReference(document: DocumentPayant) {
   return `IDJO-${document.toUpperCase()}-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`
 }
 
+/**
+ * Une transaction créée il y a plus de `validiteHeures` n'ouvre plus de
+ * téléchargement : la date est lue dans la référence elle-même, que
+ * l'agrégateur a enregistrée telle quelle et qui ne peut donc pas être
+ * rajeunie. Les références d'un autre format (Stripe) ne sont pas datées.
+ */
+export function referencePerimee(reference: string) {
+  const horodatage = /^IDJO-[A-Z]+-([0-9a-z]+)-[0-9a-f]{8}$/.exec(reference)?.[1]
+  if (!horodatage) return false
+  const creation = parseInt(horodatage, 36)
+  return Date.now() - creation > PAIEMENT.validiteHeures * 60 * 60 * 1000
+}
+
 export interface DemandePaiement {
   reference: string
   document: DocumentPayant
@@ -175,7 +190,7 @@ export async function initierPaiement(demande: DemandePaiement, origine: string)
     transaction_id: demande.reference,
     amount: PAIEMENT.prix,
     currency: PAIEMENT.devise,
-    description: `IDJÔ CV — accès ${joursLisibles()} au téléchargement`,
+    description: 'IDJÔ CV — téléchargement du CV',
     channels: demande.canal || 'ALL',
     lang: 'FR',
     metadata: demande.document,
@@ -221,21 +236,11 @@ export type EtatPaiement = 'paye' | 'en-attente' | 'refuse'
  * État d'une transaction, quel que soit l'encaisseur.
  *
  * La référence dit à qui s'adresser : celles de Stripe portent leur préfixe,
- * les autres reviennent à CinetPay. La durée renvoyée est celle du forfait
- * réellement réglé — c'est elle qui fixe la validité du jeton d'accès.
+ * les autres reviennent à CinetPay.
  */
-export async function verifierTransaction(
-  reference: string,
-): Promise<{ etat: EtatPaiement; dureeJours: number }> {
-  if (estReferenceStripe(reference)) {
-    const resultat = await verifierSessionStripe(reference)
-    return resultat.etat === 'paye'
-      ? { etat: 'paye', dureeJours: resultat.dureeJours }
-      : { etat: resultat.etat, dureeJours: PAIEMENT.dureeJours }
-  }
-
-  const etat = await verifierPaiement(reference)
-  return { etat, dureeJours: PAIEMENT.dureeJours }
+export async function verifierTransaction(reference: string): Promise<EtatPaiement> {
+  if (estReferenceStripe(reference)) return (await verifierSessionStripe(reference)).etat
+  return verifierPaiement(reference)
 }
 
 /**

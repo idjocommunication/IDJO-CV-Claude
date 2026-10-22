@@ -23,7 +23,7 @@ export const SITE = {
   city: 'Abidjan',
   country: 'CI',
   description:
-    "Créez un CV professionnel en 10 minutes avec IDJÔ CV : modèles pensés pour les recruteurs de Côte d'Ivoire et d'Afrique francophone, export PDF illimité, compatible ATS.",
+    "Créez un CV professionnel en 10 minutes avec IDJÔ CV : modèles pensés pour les recruteurs de Côte d'Ivoire et d'Afrique francophone, export PDF prêt à envoyer, compatible ATS.",
   locale: 'fr_CI',
 }
 

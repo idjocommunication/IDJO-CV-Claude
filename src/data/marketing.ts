@@ -1,23 +1,22 @@
 import { TEMPLATES } from '@/data/templates'
 import { THEMES } from '@/lib/theme'
-import { joursLisibles, prixLisible } from '@/lib/paiement'
+import { prixLisible } from '@/lib/paiement'
 
 /**
  * Offre unique : la création, l'aperçu, l'assistant et l'analyse ATS sont
- * gratuits ; seul le téléchargement du document final est payant, une fois,
- * par Mobile Money ou carte. Ne rien annoncer ici qui ne soit pas livrable le
- * jour même.
+ * gratuits ; seul le téléchargement du CV est payant, à l'unité, par Mobile
+ * Money ou carte. Ne rien annoncer ici qui ne soit pas livrable le jour même.
  */
 export const OFFRE = {
   name: 'Téléchargement',
   priceLabel: prixLisible(),
-  period: `paiement unique · ${joursLisibles()} d’accès`,
+  period: 'par téléchargement du CV',
   description: 'Le PDF final de votre CV, prêt à envoyer. La lettre de motivation reste gratuite.',
   features: [
-    'Export PDF A4 du CV',
+    'Export PDF A4 du CV, sans filigrane',
     'Lettre de motivation : téléchargement toujours gratuit',
-    `Téléchargements illimités pendant ${joursLisibles()}`,
-    'Autant de modifications et de versions que voulu',
+    'Modifications illimitées et gratuites avant de télécharger',
+    'Nouvel essai sans repayer si l’enregistrement échoue',
     'Wave, Orange Money, MTN, Moov ou carte bancaire',
     'Aucun abonnement, aucun prélèvement automatique',
   ],
@@ -98,9 +97,9 @@ export const STEPS = [
  */
 export const GUARANTEES = [
   {
-    title: 'On paie une fois, on télécharge autant qu’on veut',
+    title: 'Vous ne payez que ce que vous emportez',
     description:
-      `Le PDF est le document final, sans filigrane. Pendant ${joursLisibles()}, vous le retéléchargez autant de fois que vous voulez, avec toutes les modifications nécessaires.`,
+      `Le PDF est le document final, sans filigrane. Vous corrigez votre CV gratuitement autant que nécessaire, puis vous payez ${prixLisible()} au moment de le télécharger. Si l’enregistrement échoue, vous réessayez sans repayer.`,
   },
   {
     title: 'Vos données ne partent pas',
@@ -123,7 +122,7 @@ export const FAQ = [
   {
     question: 'Qu’est-ce qui est gratuit, qu’est-ce qui est payant ?',
     answer:
-      `La création est entièrement gratuite : les huit modèles, les couleurs, la lettre de motivation, l’analyse ATS, l’assistant et l’import de votre ancien CV. Vous ne payez que le téléchargement du PDF du CV — la lettre de motivation se télécharge gratuitement, en PDF aussi : ${prixLisible()}, une seule fois, pour ${joursLisibles()} de téléchargements illimités.`,
+      `La création est entièrement gratuite : les huit modèles, les couleurs, la lettre de motivation, l’analyse ATS, l’assistant et l’import de votre ancien CV. Vous ne payez que le téléchargement du PDF du CV : ${prixLisible()} par téléchargement. La lettre de motivation se télécharge gratuitement, en PDF aussi.`,
   },
   {
     question: 'Mon CV passera-t-il les logiciels de tri automatique (ATS) ?',

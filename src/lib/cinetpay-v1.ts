@@ -1,3 +1,4 @@
+import { request } from 'node:https'
 import { PAIEMENT, joursLisibles } from '@/lib/paiement'
 
 /**
@@ -11,11 +12,12 @@ import { PAIEMENT, joursLisibles } from '@/lib/paiement'
  * Deux points d'attention propres à cette API :
  * - CinetPay n'accepte que les appels venant d'adresses IP déclarées dans le
  *   tableau de bord (« NOT_ALLOWED » sinon) : celle du serveur qui héberge le
- *   site doit y figurer ;
+ *   site doit y figurer. Les appels partent en IPv4, et l'adresse de sortie
+ *   est relevée dans le journal à chaque refus ;
  * - la clé et le mot de passe ne quittent jamais le serveur. Ils ne doivent
  *   pas porter le préfixe `NEXT_PUBLIC_`, qui les livrerait au navigateur.
  *
- * Appels HTTP directs, sans SDK : trois requêtes ne justifient pas une
+ * Appels HTTPS directs, sans SDK : trois requêtes ne justifient pas une
  * dépendance de plus, et c'est déjà le choix des modules CinetPay et Stripe.
  */
 
@@ -48,6 +50,9 @@ export class ErreurCinetpay extends Error {
     this.name = 'ErreurCinetpay'
   }
 
+  /** Adresse IPv4 publique du serveur, relevée lors d'un refus d'adresse. */
+  ipSortie: string | undefined
+
   /** L'adresse IP du serveur n'est pas déclarée chez CinetPay. */
   get ipNonAutorisee() {
     return this.statut === 'NOT_ALLOWED' || this.code === 2011
@@ -59,38 +64,91 @@ const CODES_NORMAUX = new Set([100, 200, 2001, 2002])
 
 type Reponse = Record<string, unknown>
 
-async function appeler(methode: 'GET' | 'POST', chemin: string, corps?: unknown, jeton?: string) {
-  const minuteur = new AbortController()
-  const delai = setTimeout(() => minuteur.abort(), 15_000)
-
-  try {
-    const reponse = await fetch(`${base()}${chemin}`, {
-      method: methode,
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}),
+/**
+ * Requête HTTPS forcée en IPv4. L'API CinetPay répond aussi en IPv6 : un
+ * serveur qui dispose des deux pourrait se présenter avec une adresse IPv6
+ * absente de la liste blanche, et voir tous ses paiements refusés.
+ */
+function requeteIpv4(
+  url: string,
+  methode: 'GET' | 'POST',
+  entetes: Record<string, string>,
+  corps: string | undefined,
+  delai: number,
+) {
+  return new Promise<{ http: number; texte: string }>((resoudre, rejeter) => {
+    const requete = request(
+      url,
+      {
+        method: methode,
+        family: 4,
+        headers: corps === undefined ? entetes : { ...entetes, 'Content-Length': String(Buffer.byteLength(corps)) },
+        signal: AbortSignal.timeout(delai),
       },
-      body: corps === undefined ? undefined : JSON.stringify(corps),
-      signal: minuteur.signal,
-      cache: 'no-store',
-    })
+      (reponse) => {
+        let texte = ''
+        reponse.setEncoding('utf8')
+        reponse.on('data', (morceau: string) => (texte += morceau))
+        reponse.on('end', () => resoudre({ http: reponse.statusCode ?? 0, texte }))
+        reponse.on('error', rejeter)
+      },
+    )
+    requete.on('error', rejeter)
+    requete.end(corps)
+  })
+}
 
-    const json = ((await reponse.json().catch(() => ({}))) ?? {}) as Reponse
-    const code = typeof json.code === 'number' ? json.code : undefined
-    const statut = typeof json.status === 'string' ? json.status : undefined
-    const description = typeof json.description === 'string' ? json.description : ''
+let ipSortieConnue: string | undefined
 
-    // Même règle que le SDK officiel : une transaction échouée se lit comme
-    // une réponse, seule une erreur décrite (ou un HTTP 4xx/5xx) en est une.
-    const anormal = reponse.status >= 400 || (code !== undefined && !CODES_NORMAUX.has(code))
-    if (anormal && (description || reponse.status >= 400)) {
-      throw new ErreurCinetpay(code, statut, description || `HTTP ${reponse.status}`)
-    }
-    return json
-  } finally {
-    clearTimeout(delai)
+/**
+ * Adresse IPv4 par laquelle le serveur sort sur Internet : c'est elle que
+ * CinetPay voit, donc elle qu'il faut déclarer. Relevée seulement après un
+ * refus, pour l'écrire dans le journal.
+ */
+async function ipDeSortie() {
+  if (ipSortieConnue) return ipSortieConnue
+  try {
+    const { texte } = await requeteIpv4('https://api.ipify.org?format=json', 'GET', {}, undefined, 5_000)
+    const ip = (JSON.parse(texte) as { ip?: unknown }).ip
+    if (typeof ip === 'string' && /^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) ipSortieConnue = ip
+  } catch {
+    // Service injoignable : le refus reste signalé, sans l'adresse.
   }
+  return ipSortieConnue
+}
+
+async function appeler(methode: 'GET' | 'POST', chemin: string, corps?: unknown, jeton?: string) {
+  const { http, texte } = await requeteIpv4(
+    `${base()}${chemin}`,
+    methode,
+    {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}),
+    },
+    corps === undefined ? undefined : JSON.stringify(corps),
+    15_000,
+  )
+
+  let json: Reponse = {}
+  try {
+    json = (JSON.parse(texte) ?? {}) as Reponse
+  } catch {
+    // Réponse non JSON (page d'erreur du proxy) : seul le code HTTP compte.
+  }
+  const code = typeof json.code === 'number' ? json.code : undefined
+  const statut = typeof json.status === 'string' ? json.status : undefined
+  const description = typeof json.description === 'string' ? json.description : ''
+
+  // Même règle que le SDK officiel : une transaction échouée se lit comme
+  // une réponse, seule une erreur décrite (ou un HTTP 4xx/5xx) en est une.
+  const anormal = http >= 400 || (code !== undefined && !CODES_NORMAUX.has(code))
+  if (anormal && (description || http >= 400)) {
+    const erreur = new ErreurCinetpay(code, statut, description || `HTTP ${http}`)
+    if (erreur.ipNonAutorisee) erreur.ipSortie = await ipDeSortie()
+    throw erreur
+  }
+  return json
 }
 
 /* ------------------------------------------------------------------ */

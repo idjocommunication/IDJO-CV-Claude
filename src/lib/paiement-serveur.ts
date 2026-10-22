@@ -279,7 +279,8 @@ export async function verifierPaiement(reference: string): Promise<EtatPaiement>
  */
 export function expliquerErreurPaiement(erreur: unknown) {
   if (erreur instanceof ErreurCinetpay && erreur.ipNonAutorisee) {
-    return "CinetPay refuse l'adresse IP de ce serveur : ajoutez-la à la liste blanche du tableau de bord CinetPay."
+    const ip = erreur.ipSortie ? ` (${erreur.ipSortie})` : ''
+    return `CinetPay refuse l'adresse IP de ce serveur${ip} : ajoutez-la à la liste blanche du tableau de bord CinetPay.`
   }
   return erreur instanceof Error ? erreur.message : String(erreur)
 }

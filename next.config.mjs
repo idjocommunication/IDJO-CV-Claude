@@ -74,6 +74,12 @@ const nextConfig = {
                   : []),
               ],
             },
+            {
+              // Une réponse de paiement gardée en cache ferait croire à un
+              // client qui vient de payer que son paiement n'est pas arrivé.
+              source: '/api/:path*',
+              headers: [{ key: 'Cache-Control', value: 'no-store, max-age=0' }],
+            },
           ]
         },
       }),

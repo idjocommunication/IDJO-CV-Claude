@@ -4,6 +4,7 @@ import { EmailIndisponible, emailConfigure, envoyerEmail } from '@/lib/email'
 import { PdfIndisponible, htmlEnPdf, pdfConfigure } from '@/lib/pdf-serveur'
 import { PAIEMENT } from '@/lib/paiement'
 import { paiementConfigure, verifierAcces } from '@/lib/paiement-serveur'
+import { dejaDelivre, noterDelivrance } from '@/lib/registre'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -82,11 +83,12 @@ export async function POST(request: Request) {
 
   const { email, html, document: cible, nom, token } = analyse.data
 
-  // Téléchargement payant : sans jeton valide, rien ne part.
-  // La lettre de motivation est gratuite.
+  // Téléchargement payant : sans jeton valide, rien ne part, et un jeton ne
+  // sert qu'à un envoi. La lettre de motivation est gratuite.
   const exigeAcces =
     PAIEMENT.actif && PAIEMENT.mode === 'bloquant' && paiementConfigure() && cible !== 'lettre'
-  if (exigeAcces && !(token && verifierAcces(token))) {
+  const acces = exigeAcces && token ? verifierAcces(token) : null
+  if (exigeAcces && (!acces || (await dejaDelivre('envoi', acces.reference)))) {
     return NextResponse.json(
       { error: 'Votre accès au téléchargement n’est plus valide.', code: 'acces-invalide' },
       { status: 402 },
@@ -133,6 +135,7 @@ export async function POST(request: Request) {
       pieces: [{ nom: nomFichier(libelle.fichier, nom), contenu: pdf, type: 'application/pdf' }],
     })
 
+    if (acces) await noterDelivrance('envoi', acces.reference)
     return NextResponse.json({ ok: true, email })
   } catch (erreur) {
     // Tout est configuré mais quelque chose a lâché : c'est une panne

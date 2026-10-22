@@ -56,7 +56,7 @@ export function SiteFooter() {
             <Logo inverted />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-azur-200">
               La plateforme de création de CV pensée pour les candidats de Côte d’Ivoire et
-              d’Afrique francophone. Modèles professionnels, export PDF illimité.
+              d’Afrique francophone. Modèles professionnels, export PDF prêt à envoyer.
             </p>
             <ul className="mt-6 space-y-2 text-sm text-azur-200">
               <li className="flex items-center gap-2.5">

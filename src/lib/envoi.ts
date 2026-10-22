@@ -3,6 +3,7 @@
 import { lireAcces } from '@/lib/paiement'
 import { PRINT_LABELS, buildStandaloneHtml, type PrintTarget } from '@/lib/print'
 import { SANS_SERVEUR } from '@/lib/deploiement'
+import { useTelechargement } from '@/lib/telechargement'
 
 /**
  * Expédition du document par e-mail.
@@ -98,7 +99,8 @@ export async function envoyerParEmail({
         nom,
         html,
         document: cible,
-        token: lireAcces()?.token,
+        // Le téléchargement payé a déjà quitté le navigateur s'il est en cours d'usage.
+        token: useTelechargement.getState().seance?.jeton ?? lireAcces()?.token,
       }),
     })
 

@@ -17,7 +17,9 @@ import { useCvStore } from '@/lib/store'
 import { formatFrenchDate, useLetterStore, type LetterData } from '@/lib/letter'
 import { FONT_CHOICES, THEMES, THEME_BY_ID, type FontChoice } from '@/lib/theme'
 import { useProprietaireImpression } from '@/lib/print-registry'
-import { useAcces } from '@/lib/use-acces'
+import { paiementRequis } from '@/lib/paiement'
+import { useTelechargement } from '@/lib/telechargement'
+import { SeanceTelechargement } from '@/components/editor/SeanceTelechargement'
 import { clamp, cn, fullName } from '@/lib/utils'
 
 const SCALES = [
@@ -41,7 +43,9 @@ export function LetterEditor() {
   const loadSample = useLetterStore((s) => s.loadSample)
   const reset = useLetterStore((s) => s.reset)
   const cv = useCvStore((s) => s.data)
-  const { autorise } = useAcces()
+  /** Le CV ne sort qu'au sein d'une séance de téléchargement payée. */
+  const seancePayee = useTelechargement((s) => Boolean(s.seance?.payee))
+  const cvImprimable = !paiementRequis() || seancePayee
   const rendImpression = useProprietaireImpression()
 
   const [mobileView, setMobileView] = useState<'form' | 'preview'>('form')
@@ -394,20 +398,18 @@ export function LetterEditor() {
       </div>
 
       {/* Copies plein format utilisées par l'impression et l'export PDF :
-          la lettre et le CV, pour pouvoir télécharger les deux d'ici. */}
-      {!rendImpression ? null : autorise ? (
+          la lettre et le CV, pour pouvoir télécharger les deux d'ici. La lettre
+          est gratuite ; le CV ne sort qu'au sein d'une séance payée. */}
+      {!rendImpression ? null : (
         <>
+          <SeanceTelechargement />
           <div className="print-only print-doc print-doc-cv" aria-hidden>
-            <CvSheet data={cv} />
+            {cvImprimable ? <CvSheet data={cv} /> : <DocumentVerrouille />}
           </div>
           <div className="print-only print-doc print-doc-lettre" aria-hidden>
             <LetterSheet data={data} />
           </div>
         </>
-      ) : (
-        <div className="print-only print-doc" aria-hidden>
-          <DocumentVerrouille />
-        </div>
       )}
     </>
   )

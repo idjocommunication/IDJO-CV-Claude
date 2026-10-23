@@ -38,26 +38,29 @@ export class ImportError extends Error {}
 const EXT = (name: string) => name.toLowerCase().split('.').pop() ?? ''
 
 /**
- * Adresse du « worker » de pdf.js.
+ * Branche pdf.js sur son « worker ».
  *
- * Sur le site, il est servi depuis `public/`, en `.js` et non en `.mjs` :
- * Hostinger sert les `.mjs` en `text/plain`, et le navigateur refuse alors de
- * lancer le worker — l'import de tout PDF échouait. Dans la page autonome, il n'y a
- * pas de serveur : son code est embarqué dans le paquet et transformé en URL
- * de blob au premier usage. Sans cela, l'import de PDF ne marcherait que sur
- * le site déployé.
+ * Sur le site, le worker est compilé par Next.js (`pdf-worker.ts`) et servi
+ * avec le reste des scripts : il fonctionne ainsi sur les iPhone qui ne sont
+ * pas en iOS 16.4 ou plus, et Hostinger le sert avec le bon type — ce n'était
+ * pas le cas du fichier `.mjs` copié auparavant. Il est créé une fois et
+ * réutilisé d'un import à l'autre.
+ *
+ * Dans la page autonome, il n'y a pas de serveur : le code du worker est
+ * embarqué dans le paquet et transformé en URL de blob au premier usage.
  */
-let adresseWorker: string | null = null
+let portWorker: Worker | null = null
+let adresseEmbarquee: string | null = null
 
-function sourceWorker() {
-  if (adresseWorker) return adresseWorker
-
+function brancherWorker(options: { workerSrc: string; workerPort: Worker | null }) {
   const embarque = (globalThis as { __IDJO_PDF_WORKER__?: string }).__IDJO_PDF_WORKER__
-  adresseWorker = embarque
-    ? URL.createObjectURL(new Blob([embarque], { type: 'text/javascript' }))
-    : '/pdf.worker.min.js'
-
-  return adresseWorker
+  if (embarque) {
+    adresseEmbarquee ??= URL.createObjectURL(new Blob([embarque], { type: 'text/javascript' }))
+    options.workerSrc = adresseEmbarquee
+    return
+  }
+  portWorker ??= new Worker(new URL('./pdf-worker.ts', import.meta.url))
+  options.workerPort = portWorker
 }
 
 /**
@@ -72,7 +75,7 @@ type DocumentPdf = Awaited<
 
 async function ouvrirPdf(file: File) {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
-  pdfjs.GlobalWorkerOptions.workerSrc = sourceWorker()
+  brancherWorker(pdfjs.GlobalWorkerOptions)
 
   const buffer = await file.arrayBuffer()
   return pdfjs.getDocument({
@@ -246,8 +249,12 @@ export async function readImportedFile(file: File): Promise<ImportedFile> {
       if (nom === 'InvalidPDFException') {
         throw new ImportError('Ce fichier PDF est endommagé et ne peut pas être ouvert.')
       }
+      // La cause technique, courte, accompagne le message : c'est elle qu'un
+      // utilisateur transmet avec sa capture d'écran quand un appareil coince.
+      console.error('[import] lecture du PDF impossible', error)
+      const cause = error instanceof Error ? error.message : String(error)
       throw new ImportError(
-        'La lecture de ce PDF a échoué. Copiez le texte de votre CV et collez-le ci-dessous.',
+        `La lecture de ce PDF a échoué. Copiez le texte de votre CV et collez-le ci-dessous. (Détail : ${cause.slice(0, 140)})`,
       )
     }
 

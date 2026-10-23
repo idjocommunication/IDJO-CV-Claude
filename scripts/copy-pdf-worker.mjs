@@ -4,13 +4,13 @@ import { dirname, join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
 /**
- * Copie dans `public/` les fichiers que les lecteurs d'import chargent à la
- * demande, uniquement quand l'utilisateur importe un document :
+ * Prépare les lecteurs d'import, chargés à la demande :
  *
- * - le « worker » de pdf.js, version « legacy » comme la bibliothèque (voir
- *   `cv-import.ts`), pour lire les PDF ;
+ * - pdf.js, recopié dans `src/lib/vendor/` pour être compilé par Next et
+ *   fonctionner sur les iPhone antérieurs à iOS 16.4 (son worker passe par
+ *   `src/lib/pdf-worker.ts`) ;
  * - le moteur de reconnaissance de texte (tesseract.js) et le modèle du
- *   français, pour lire un CV en photo ou un PDF scanné.
+ *   français, copiés dans `public/ocr/`, pour lire un CV en photo ou scanné.
  *
  * Leur version doit rester identique à celle des bibliothèques installées :
  * d'où la copie automatique plutôt que des fichiers figés dans le dépôt. Ils
@@ -32,16 +32,19 @@ function copier(source, destination, libelle) {
 }
 
 /* -- pdf.js ---------------------------------------------------------------- */
+// La bibliothèque est recopiée dans `src/` : Next compile alors ce fichier
+// comme le code du site et en redescend la syntaxe (blocs `static { … }`,
+// méthodes privées) au niveau des navigateurs visés — ce qu'il ne fait pas
+// pour la copie de `node_modules`, même listée dans `transpilePackages`.
+// `next.config.mjs` y redirige les imports de `pdfjs-dist/legacy/build/pdf.mjs`.
 if (
   copier(
-    join(racine('pdfjs-dist'), 'legacy', 'build', 'pdf.worker.min.mjs'),
-    // Publié en `.js` : certains hébergeurs servent les `.mjs` en text/plain,
-    // que le navigateur refuse d'exécuter comme module.
-    join(publicDir, 'pdf.worker.min.js'),
-    'worker pdf.js',
+    join(racine('pdfjs-dist'), 'legacy', 'build', 'pdf.mjs'),
+    join(process.cwd(), 'src', 'lib', 'vendor', 'pdfjs-legacy.mjs'),
+    'pdf.js',
   )
 ) {
-  console.log('[pdf] worker copié dans public/')
+  console.log('[pdf] bibliothèque copiée dans src/lib/vendor/')
 }
 
 /* -- Reconnaissance de texte ----------------------------------------------- */

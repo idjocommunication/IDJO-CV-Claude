@@ -19,8 +19,7 @@ demo-build/bundle.js
 demo-build/styles.css
 demo-build/*.html
 
-# Copié depuis pdfjs-dist par scripts/copy-pdf-worker.mjs
-/public/pdf.worker.min.js
-/public/pdf.worker.min.mjs
+# Copiés depuis node_modules par scripts/copy-pdf-worker.mjs
 /public/ocr/
+/src/lib/vendor/
 demo-build/pdf-worker.txt

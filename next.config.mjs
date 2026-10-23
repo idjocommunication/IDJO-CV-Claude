@@ -1,3 +1,5 @@
+import path from 'node:path'
+
 /**
  * Deux cibles de déploiement, une seule base de code.
  *
@@ -44,6 +46,20 @@ const CSP = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // pdf.js (import de CV) garde une syntaxe récente — blocs `static { … }` —
+  // même dans sa version « legacy » : Safari ne la lit que depuis iOS 16.4.
+  // Next la redescend au niveau des navigateurs qu'il vise, worker compris.
+  transpilePackages: ['pdfjs-dist'],
+  // La bibliothèque principale, elle, n'est pas redescendue depuis
+  // node_modules : on sert la copie de `src/lib/vendor/` (voir
+  // scripts/copy-pdf-worker.mjs), compilée comme le code du site.
+  webpack(config) {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'pdfjs-dist/legacy/build/pdf.mjs$': path.resolve('src/lib/vendor/pdfjs-legacy.mjs'),
+    }
+    return config
+  },
   poweredByHeader: false,
   compress: true,
   images: {

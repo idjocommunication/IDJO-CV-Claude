@@ -74,6 +74,8 @@ type DocumentPdf = Awaited<
 >
 
 async function ouvrirPdf(file: File) {
+  // Compléments pour Safari (itération des flux…), avant toute lecture.
+  await import('@/lib/compat-navigateur')
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
   brancherWorker(pdfjs.GlobalWorkerOptions)
 

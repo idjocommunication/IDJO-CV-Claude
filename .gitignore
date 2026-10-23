@@ -21,4 +21,5 @@ demo-build/*.html
 
 # Copié depuis pdfjs-dist par scripts/copy-pdf-worker.mjs
 /public/pdf.worker.min.mjs
+/public/ocr/
 demo-build/pdf-worker.txt

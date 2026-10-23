@@ -9,6 +9,7 @@ import { Field, TextArea, TextInput } from '@/components/editor/fields'
 import { AssistantPanel } from '@/components/assistant/AssistantPanel'
 import { DownloadMenu } from '@/components/editor/DownloadMenu'
 import { DocumentVerrouille } from '@/components/editor/DocumentVerrouille'
+import { LienDonneesCv } from '@/components/editor/LienDonneesCv'
 import { ImportCv } from '@/components/editor/ImportCv'
 import { ConfirmButton } from '@/components/ui/ConfirmButton'
 import { MenuDeroulant, OptionMenu } from '@/components/ui/MenuDeroulant'
@@ -404,7 +405,14 @@ export function LetterEditor() {
         <>
           <SeanceTelechargement />
           <div className="print-only print-doc print-doc-cv" aria-hidden>
-            {cvImprimable ? <CvSheet data={cv} /> : <DocumentVerrouille />}
+            {cvImprimable ? (
+              <>
+                <LienDonneesCv data={cv} />
+                <CvSheet data={cv} />
+              </>
+            ) : (
+              <DocumentVerrouille />
+            )}
           </div>
           <div className="print-only print-doc print-doc-lettre" aria-hidden>
             <LetterSheet data={data} />

@@ -1,93 +1,88 @@
 import type { Metadata, Viewport } from 'next'
-import {
-  Anton,
-  Archivo_Narrow,
-  IBM_Plex_Sans,
-  Inter,
-  Lora,
-  Montserrat,
-  Playfair_Display,
-  Poppins,
-  Source_Serif_4,
-  Work_Sans,
-} from 'next/font/google'
+import localFont from 'next/font/local'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteFooter } from '@/components/site/SiteFooter'
 import { JsonLd, SITE, organizationJsonLd, softwareJsonLd } from '@/lib/seo'
 import './globals.css'
 
-const inter = Inter({
-  subsets: ['latin'],
+/* Polices servies depuis le dépôt (`src/app/polices/`, voir
+   `scripts/telecharger-polices.mjs`) et non plus téléchargées chez Google à
+   chaque construction : Google Fonts répond par intermittence aux serveurs
+   Hostinger avec des adresses que Next.js ne sait pas lire, et la construction
+   échouait. Les familles variables tiennent en un fichier pour toutes leurs
+   graisses. */
+
+const inter = localFont({
+  src: [{ path: './polices/inter-400-800.woff2', weight: '400 800', style: 'normal' }],
   display: 'swap',
   variable: '--font-inter',
-  weight: ['400', '500', '600', '700', '800'],
 })
 
-const lora = Lora({
-  subsets: ['latin'],
+const lora = localFont({
+  src: [{ path: './polices/lora-400-700.woff2', weight: '400 700', style: 'normal' }],
   display: 'swap',
   variable: '--font-lora',
-  weight: ['400', '500', '600', '700'],
+  adjustFontFallback: 'Times New Roman',
 })
 
-const archivo = Archivo_Narrow({
-  subsets: ['latin'],
+const archivo = localFont({
+  src: [{ path: './polices/archivo-narrow-400-700.woff2', weight: '400 700', style: 'normal' }],
   display: 'swap',
   variable: '--font-archivo',
-  weight: ['400', '500', '600', '700'],
 })
 
-const anton = Anton({
-  subsets: ['latin'],
+const anton = localFont({
+  src: [{ path: './polices/anton-400.woff2', weight: '400', style: 'normal' }],
   display: 'swap',
   variable: '--font-anton',
-  weight: '400',
 })
 
 /* Familles proposées dans le panneau « Couleurs & design » du CV et de la
    lettre. Chacune couvre le gras 700/800 dont les modèles ont besoin pour les
    titres de section. */
 
-const montserrat = Montserrat({
-  subsets: ['latin'],
+const montserrat = localFont({
+  src: [{ path: './polices/montserrat-400-800.woff2', weight: '400 800', style: 'normal' }],
   display: 'swap',
   variable: '--font-montserrat',
-  weight: ['400', '500', '600', '700', '800'],
 })
 
-const poppins = Poppins({
-  subsets: ['latin'],
+const poppins = localFont({
+  src: [
+    { path: './polices/poppins-400.woff2', weight: '400', style: 'normal' },
+    { path: './polices/poppins-500.woff2', weight: '500', style: 'normal' },
+    { path: './polices/poppins-600.woff2', weight: '600', style: 'normal' },
+    { path: './polices/poppins-700.woff2', weight: '700', style: 'normal' },
+    { path: './polices/poppins-800.woff2', weight: '800', style: 'normal' },
+  ],
   display: 'swap',
   variable: '--font-poppins',
-  weight: ['400', '500', '600', '700', '800'],
 })
 
-const workSans = Work_Sans({
-  subsets: ['latin'],
+const workSans = localFont({
+  src: [{ path: './polices/work-sans-400-800.woff2', weight: '400 800', style: 'normal' }],
   display: 'swap',
   variable: '--font-work-sans',
-  weight: ['400', '500', '600', '700', '800'],
 })
 
-const plex = IBM_Plex_Sans({
-  subsets: ['latin'],
+const plex = localFont({
+  src: [{ path: './polices/ibm-plex-sans-400-700.woff2', weight: '400 700', style: 'normal' }],
   display: 'swap',
   variable: '--font-plex',
-  weight: ['400', '500', '600', '700'],
 })
 
-const sourceSerif = Source_Serif_4({
-  subsets: ['latin'],
+const sourceSerif = localFont({
+  src: [{ path: './polices/source-serif-4-400-700.woff2', weight: '400 700', style: 'normal' }],
   display: 'swap',
   variable: '--font-source-serif',
-  weight: ['400', '600', '700'],
+  adjustFontFallback: 'Times New Roman',
 })
 
-const playfair = Playfair_Display({
-  subsets: ['latin'],
+const playfair = localFont({
+  src: [{ path: './polices/playfair-display-400-800.woff2', weight: '400 800', style: 'normal' }],
   display: 'swap',
   variable: '--font-playfair',
-  weight: ['400', '500', '600', '700', '800'],
+  adjustFontFallback: 'Times New Roman',
 })
 
 const FONT_VARIABLES = [

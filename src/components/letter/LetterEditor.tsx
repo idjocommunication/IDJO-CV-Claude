@@ -112,7 +112,7 @@ export function LetterEditor() {
         <header className="no-print z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-cloud-300 bg-white px-3 sm:h-16 sm:px-5">
           <div className="flex items-center gap-4">
             <Link href="/" aria-label="Retour à l’accueil">
-              <Logo />
+              <Logo compact />
             </Link>
             <span className="hidden text-xs text-ink-muted lg:inline">Lettre de motivation</span>
           </div>
@@ -132,7 +132,7 @@ export function LetterEditor() {
               aria-label="Assistant IA"
               title="Assistant de rédaction"
               className={cn(
-                'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold transition-colors',
+                'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold transition-colors sm:px-3',
                 assistantOpen
                   ? 'border-azur-500 bg-azur-50 text-navy-700'
                   : 'border-cloud-400 text-ink hover:border-azur-400 hover:text-navy-700',

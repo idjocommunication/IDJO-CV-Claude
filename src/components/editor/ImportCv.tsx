@@ -290,10 +290,15 @@ export function ImportCv({ compact = false }: { compact?: boolean }) {
         <span className={compact ? 'hidden lg:inline' : undefined}>Importer</span>
       </button>
 
+      {/* Bulle en bas d'écran plutôt que texte dans la barre d'outils : sur
+          téléphone, la barre n'a pas la place et le message masquait le logo. */}
       {confirmation ? (
-        <span className="max-w-[40vw] truncate text-xs font-semibold text-navy-700" role="status">
+        <p
+          role="status"
+          className="fixed inset-x-4 bottom-20 z-[90] mx-auto max-w-sm rounded-xl bg-ink px-4 py-3 text-center text-[13px] font-semibold text-white shadow-float lg:bottom-6"
+        >
           {confirmation}
-        </span>
+        </p>
       ) : null}
 
       {ouvert ? (
@@ -515,18 +520,20 @@ export function ImportCv({ compact = false }: { compact?: boolean }) {
             ) : null}
 
             {etape === 'resultat' ? (
-              <footer className="flex flex-col gap-2 border-t border-cloud-300 px-6 py-4 sm:flex-row-reverse">
+              // `w-full` et non `flex-1` : en colonne, `flex-1` écrasait les
+              // boutons sous la hauteur d'un doigt sur téléphone.
+              <footer className="grid gap-2 border-t border-cloud-300 px-6 py-4 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={appliquer}
-                  className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-ink text-[14px] font-semibold text-white transition-colors hover:bg-ink-soft"
+                  className="inline-flex h-11 w-full items-center sm:order-last justify-center gap-2 rounded-full bg-ink text-[14px] font-semibold text-white transition-colors hover:bg-ink-soft"
                 >
                   Remplir mon CV
                 </button>
                 <button
                   type="button"
                   onClick={reinitialiser}
-                  className="inline-flex h-11 flex-1 items-center justify-center rounded-full border border-cloud-400 text-[14px] font-semibold text-ink transition-colors hover:border-ink"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-full border border-cloud-400 text-[14px] font-semibold text-ink transition-colors hover:border-ink"
                 >
                   Choisir un autre fichier
                 </button>

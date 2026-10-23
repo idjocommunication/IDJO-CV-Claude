@@ -24,7 +24,7 @@ export function AtsBadge({ onClick, open }: { onClick: () => void; open: boolean
       onClick={onClick}
       aria-expanded={open}
       className={cn(
-        'inline-flex h-9 items-center gap-2 rounded-full border px-3 text-[13px] font-semibold transition-colors sm:h-10 sm:px-4',
+        'inline-flex h-9 items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold transition-colors sm:h-10 sm:gap-2 sm:px-4',
         open ? 'border-ink bg-ink text-white' : 'border-cloud-400 bg-white text-ink hover:border-ink',
       )}
       title="Analyse ATS de votre CV"

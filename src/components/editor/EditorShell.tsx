@@ -139,17 +139,19 @@ export function EditorShell() {
     <>
       <div className="screen-only flex h-[100dvh] flex-col overflow-hidden bg-cloud">
       {/* Barre d'outils */}
-      <header className="no-print z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-cloud-300 bg-white px-3 sm:h-16 sm:px-5">
+      <header className="no-print z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-cloud-300 bg-white px-2.5 sm:h-16 sm:gap-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-4">
           <Link href="/" aria-label="Retour à l’accueil" className="shrink-0">
-            <Logo />
+            <Logo compact />
           </Link>
           <span className="hidden truncate text-xs text-ink-muted lg:inline">
             {mounted ? 'Enregistré sur cet appareil' : 'Chargement…'}
           </span>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        {/* Sur téléphone, tout doit tenir à côté du pictogramme du logo : marges
+            resserrées, et raccourci vers la lettre masqué sous 360 px. */}
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <ImportCv compact />
           <button
             type="button"
@@ -162,7 +164,7 @@ export function EditorShell() {
             aria-label="Assistant IA"
             title="Assistant de rédaction"
             className={cn(
-              'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold transition-colors',
+              'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold transition-colors sm:px-3',
               assistantOpen
                 ? 'border-azur-500 bg-azur-50 text-navy-700'
                 : 'border-cloud-400 text-ink hover:border-azur-400 hover:text-navy-700',
@@ -181,7 +183,7 @@ export function EditorShell() {
           />
           <Link
             href="/lettre-de-motivation"
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-2 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-cloud-200 hover:text-ink sm:px-3"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-2 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-cloud-200 hover:text-ink max-[359px]:hidden sm:px-3"
             title="Lettre de motivation"
           >
             <PenLine size={14} />

@@ -40,7 +40,9 @@ const EXT = (name: string) => name.toLowerCase().split('.').pop() ?? ''
 /**
  * Adresse du « worker » de pdf.js.
  *
- * Sur le site, il est servi depuis `public/`. Dans la page autonome, il n'y a
+ * Sur le site, il est servi depuis `public/`, en `.js` et non en `.mjs` :
+ * Hostinger sert les `.mjs` en `text/plain`, et le navigateur refuse alors de
+ * lancer le worker — l'import de tout PDF échouait. Dans la page autonome, il n'y a
  * pas de serveur : son code est embarqué dans le paquet et transformé en URL
  * de blob au premier usage. Sans cela, l'import de PDF ne marcherait que sur
  * le site déployé.
@@ -53,7 +55,7 @@ function sourceWorker() {
   const embarque = (globalThis as { __IDJO_PDF_WORKER__?: string }).__IDJO_PDF_WORKER__
   adresseWorker = embarque
     ? URL.createObjectURL(new Blob([embarque], { type: 'text/javascript' }))
-    : '/pdf.worker.min.mjs'
+    : '/pdf.worker.min.js'
 
   return adresseWorker
 }

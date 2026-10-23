@@ -35,7 +35,9 @@ function copier(source, destination, libelle) {
 if (
   copier(
     join(racine('pdfjs-dist'), 'legacy', 'build', 'pdf.worker.min.mjs'),
-    join(publicDir, 'pdf.worker.min.mjs'),
+    // Publié en `.js` : certains hébergeurs servent les `.mjs` en text/plain,
+    // que le navigateur refuse d'exécuter comme module.
+    join(publicDir, 'pdf.worker.min.js'),
     'worker pdf.js',
   )
 ) {

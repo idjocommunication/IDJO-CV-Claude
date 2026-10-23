@@ -82,10 +82,14 @@ const TITRES: { id: SectionId; motifs: RegExp }[] = [
   { id: 'formation', motifs: /^(formations?|etudes?|études?|diplomes?|diplômes?|scolarite|scolarité|cursus|education)\b/i },
   { id: 'competences', motifs: /^(competences?|compétences?|savoir-faire|expertises?|aptitudes?|skills)\b/i },
   { id: 'langues', motifs: /^(langues?|languages?)\b/i },
-  { id: 'interets', motifs: /^(centres? d.inter|loisirs|hobbies|interets|intérêts|activites? extra)/i },
+  { id: 'interets', motifs: /^(centres? d.int[ée]r|loisirs|hobbies|int[ée]r[êe]ts|activites? extra)/i },
   { id: 'distinctions', motifs: /^(distinctions?|certifications?|prix|recompenses?|récompenses?|realisations?|réalisations?)\b/i },
   { id: 'references', motifs: /^(r[ée]f[ée]rences?|recommandations?)\b/i },
 ]
+
+/** Mots de gabarit qui ressemblent à un nom propre sans en être un. */
+const MOTS_PAS_UN_NOM =
+  /^(contact|contacts|contacter|me|moi|mon|ma|mes|t[ée]l[ée]phone|t[ée]l|e-?mail|courriel|adresse|site|web|profil|cv|curriculum|vitae|coordonn[ée]es|informations?|personnelles?|propos|portfolio|linkedin|universit[ée]|lyc[ée]e|[ée]cole|institut|coll[èe]ge|groupe|agence|soci[ée]t[ée]|sarl|rue|avenue|boulevard|quartier|master|licence|baccalaur[ée]at|bts|dut)$/i
 
 const MOTS_TITRE_POSTE =
   /(responsable|charg[ée]|assistant|directeur|directrice|manager|technicien|ing[ée]nieur|d[ée]veloppeur|comptable|commercial|consultant|analyste|infirmier|enseignant|professeur|agent|secr[ée]taire|chef|superviseur|coordinateur|gestionnaire|conseiller|auditeur|juriste|logisticien|architecte|designer|stagiaire)/i
@@ -121,7 +125,9 @@ function decouper(lines: string[]) {
   let courante = 'entete'
 
   for (const ligne of lines) {
-    const nu = ligne.replace(/^[^\p{L}]+/u, '').trim()
+    // « EXPÉRIENCE : » est un titre comme un autre : le deux-points final,
+    // fréquent sur les modèles Word, ne doit pas le faire passer pour du texte.
+    const nu = ligne.replace(/^[^\p{L}]+/u, '').replace(/\s*:\s*$/, '').trim()
     const titre = TITRES.find((t) => estUnTitre(nu, t.motifs))
     if (titre) {
       courante = titre.id
@@ -198,7 +204,11 @@ export function parseCvText(texte: string): ParsedCv {
   const lines = lignes(texte)
   const sections = decouper(lines)
   const entete = sections.entete ?? []
-  const brut = lines.join('\n')
+  // Les références citent d'autres personnes, avec leurs propres nom, numéro
+  // et e-mail : elles sont écartées de la recherche des coordonnées.
+  const dansReferences = new Set(sections.references ?? [])
+  const lignesCandidat = lines.filter((ligne) => !dansReferences.has(ligne))
+  const brut = lignesCandidat.join('\n')
 
   /* -- Coordonnées ------------------------------------------------------ */
   const email = brut.match(EMAIL)?.[0]
@@ -207,9 +217,12 @@ export function parseCvText(texte: string): ParsedCv {
     found.push('Email')
   }
 
-  const telLigne = lines.find(
-    (l) => TELEPHONE.test(l) && !EMAIL.test(l) && !/^\s*(19|20)\d{2}\s*[-–—]/.test(l),
-  )
+  // L'e-mail est retiré avant la recherche : un bandeau de contact les met
+  // souvent sur la même ligne (« +225 07 07 12 34 56  aicha@email.ci »).
+  const sansEmail = (ligne: string) => ligne.replace(new RegExp(EMAIL.source, 'g'), ' ')
+  const telLigne = lignesCandidat
+    .map(sansEmail)
+    .find((l) => TELEPHONE.test(l) && !/^\s*(19|20)\d{2}\s*[-–—]/.test(l))
   const tel = telLigne?.match(TELEPHONE)?.[0]?.trim()
   if (tel && tel.replace(/\D/g, '').length >= 8) {
     data.profile.phone = tel
@@ -253,13 +266,74 @@ export function parseCvText(texte: string): ParsedCv {
 
     const mots = ligne.trim().split(/\s+/)
     if (mots.length < 2 || mots.length > 4) return false
+    // Une lettre isolée est un reste de reconnaissance de texte, pas un nom.
+    if (mots.some((mot) => mot.length < 2)) return false
+    if (mots.some((mot) => MOTS_PAS_UN_NOM.test(mot))) return false
+    // « Responsable Marketing Digital » a la forme d'un nom propre.
+    if (MOTS_TITRE_POSTE.test(ligne)) return false
     return mots.every((mot) => /^[\p{Lu}]/u.test(mot))
   }
 
-  // Certains gabarits placent le nom dans une colonne latérale, hors en-tête :
-  // à défaut, on le cherche dans les toutes premières lignes de la page.
-  const candidatBrut = entete.find(ressembleAUnNom) ?? lines.slice(0, 15).find(ressembleAUnNom)
-  const candidatNom = candidatBrut ? nettoyerNom(candidatBrut) : undefined
+  /**
+   * Nom en lettres espacées : le PDF livre « A Ï C H A » ou « KO N AT É ». On
+   * recolle les lettres ; les limites entre mots sont perdues, ce qui suffit
+   * pour un prénom ou un nom seul.
+   */
+  const recoller = (ligne: string) => {
+    const morceaux = ligne.split(/\s+/)
+    return morceaux.length >= 3 && morceaux.every((m) => m.length <= 2) ? morceaux.join('') : ligne
+  }
+
+  /** Un seul mot qui pourrait être un prénom ou un nom : « AÏCHA », « Konaté ». */
+  const motDeNom = (ligne: string) =>
+    /^[\p{Lu}][\p{L}'’-]{1,24}$/u.test(ligne) &&
+    !MOTS_PAS_UN_NOM.test(ligne) &&
+    !TITRES.some((titre) => estUnTitre(ligne, titre.motifs))
+
+  /**
+   * Monogramme de gabarit collé au nom : « AK » suivi de « KONATÉ » quand le
+   * prénom « AÏCHA » est à la ligne au-dessus. Les initiales ne sont retirées
+   * que si elles correspondent bien aux mots du nom.
+   */
+  const sansMonogramme = (ligne: string, voisine: string) => {
+    const m = ligne.match(/^(\p{Lu}{2,3})\s+(\S.*)$/u)
+    if (!m) return ligne
+    const initiales = `${voisine} ${m[2]}`
+      .split(/\s+/)
+      .map((mot) => mot[0] ?? '')
+      .join('')
+      .toUpperCase()
+    return initiales.startsWith(m[1]) ? m[2] : ligne
+  }
+
+  /**
+   * Nom en une ligne (« Aïcha Konaté ») ou réparti sur deux, prénom puis nom,
+   * comme le font beaucoup de modèles à gros titre. On garde le premier trouvé
+   * en lisant la page de haut en bas.
+   */
+  const trouverNom = (liste: string[]) => {
+    for (let i = 0; i < liste.length; i += 1) {
+      const ligne = recoller(nettoyerNom(liste[i]))
+      const suivante = liste[i + 1] ? sansMonogramme(recoller(nettoyerNom(liste[i + 1])), ligne) : ''
+      if (motDeNom(ligne) && motDeNom(suivante)) return { brut: liste[i], nom: `${ligne} ${suivante}` }
+      if (ressembleAUnNom(liste[i])) return { brut: liste[i], nom: ligne }
+    }
+    return null
+  }
+
+  // Certains gabarits placent le nom dans une colonne latérale, hors en-tête,
+  // parfois relue après une autre colonne : à défaut, on le cherche dans le
+  // haut du texte, en sautant les listes de mots isolés (« Excel », « Word »)
+  // qui formeraient sinon un faux prénom et nom.
+  const listes = new Set([
+    ...(sections.competences ?? []),
+    ...(sections.langues ?? []),
+    ...(sections.interets ?? []),
+  ])
+  const trouve =
+    trouverNom(entete) ?? trouverNom(lignesCandidat.filter((l) => !listes.has(l)).slice(0, 30))
+  const candidatBrut = trouve?.brut
+  const candidatNom = trouve?.nom
   if (candidatNom) {
     const mots = candidatNom.split(/\s+/)
     data.profile.firstName = mots[0]

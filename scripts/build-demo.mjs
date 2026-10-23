@@ -22,7 +22,7 @@ const run = (commande, args) =>
 // serveur pour le fournir, elle le transforme en blob au premier import de PDF.
 const require = createRequire(import.meta.url)
 copyFileSync(
-  join(dirname(require.resolve('pdfjs-dist/package.json')), 'build', 'pdf.worker.min.mjs'),
+  join(dirname(require.resolve('pdfjs-dist/package.json')), 'legacy', 'build', 'pdf.worker.min.mjs'),
   'demo-build/pdf-worker.txt',
 )
 

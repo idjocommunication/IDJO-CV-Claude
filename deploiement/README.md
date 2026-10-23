@@ -10,7 +10,7 @@ il suffit de choisir la commande de construction.
 | Éditeur, 8 modèles, 24 palettes, 7 doses, 9 polices | oui | oui |
 | Export PDF, sauvegarde `.json`, lettre de motivation | oui | oui |
 | Assistant de rédaction | générateur local | Claude si `ANTHROPIC_API_KEY` |
-| Import d'un CV existant | analyse dans le navigateur | analyse assistée par Claude |
+| Import d'un CV (PDF, Word, photo, scan) | analyse et reconnaissance de texte dans le navigateur | idem, ou Claude si `ANTHROPIC_API_KEY` et accord du candidat |
 | Formulaire de contact | e-mail / WhatsApp | envoi depuis le site |
 | Envoi du CV par e-mail | non | oui |
 | Paiement CinetPay | lien + code vérifié dans le navigateur | oui (clés API ou lien + code signé) |
@@ -18,6 +18,15 @@ il suffit de choisir la commande de construction.
 
 Aucune de ces différences n'empêche un candidat de faire son CV et de le
 télécharger : c'est le cœur du site, et il tient entier dans le navigateur.
+
+**Import de CV en photo ou scanné.** La reconnaissance de texte tourne dans le
+navigateur à partir de `public/ocr/` (environ 13 Mo, copiés à chaque
+construction depuis `node_modules`, jamais versionnés) ; la politique de
+sécurité autorise pour cela `'wasm-unsafe-eval'`, dans `next.config.mjs` comme
+dans `hostinger/.htaccess`. Avec `ANTHROPIC_API_KEY` sur le serveur Node, le
+candidat peut choisir la lecture par Claude, nettement plus fiable ; il est
+prévenu que son CV complet est alors envoyé à Anthropic. Un PDF exporté par
+IDJÔ CV se réimporte à l'identique dans tous les cas.
 
 ---
 

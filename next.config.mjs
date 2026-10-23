@@ -19,12 +19,15 @@ const exportStatique = process.env.EXPORT_STATIQUE === '1'
 /**
  * Politique de contenu : tout vient du domaine lui-même. Les scripts en ligne
  * sont ceux que Next injecte pour l'hydratation ; data: et blob: servent aux
- * images du CV, aux polices et au PDF. La redirection vers la page de
- * paiement CinetPay est une navigation : elle n'est pas concernée.
+ * images du CV, aux polices et au PDF. 'wasm-unsafe-eval' autorise le seul
+ * WebAssembly — le moteur de reconnaissance de texte servi depuis /ocr/, qui
+ * lit les CV en photo — sans rouvrir eval() au JavaScript. La redirection
+ * vers la page de paiement CinetPay est une navigation : elle n'est pas
+ * concernée.
  */
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",

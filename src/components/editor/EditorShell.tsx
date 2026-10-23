@@ -21,6 +21,7 @@ import { AssistantPanel } from '@/components/assistant/AssistantPanel'
 import { DownloadMenu } from '@/components/editor/DownloadMenu'
 import { RetourPaiement } from '@/components/editor/PaiementDialog'
 import { DocumentVerrouille } from '@/components/editor/DocumentVerrouille'
+import { LienDonneesCv } from '@/components/editor/LienDonneesCv'
 import { SeanceTelechargement } from '@/components/editor/SeanceTelechargement'
 import { ImportCv } from '@/components/editor/ImportCv'
 import { Logo } from '@/components/site/Logo'
@@ -294,7 +295,14 @@ export function EditorShell() {
         <>
           <SeanceTelechargement />
           <div className="print-only print-doc print-doc-cv" aria-hidden>
-            {cvImprimable ? <CvSheet data={data} /> : <DocumentVerrouille />}
+            {cvImprimable ? (
+              <>
+                <LienDonneesCv data={data} />
+                <CvSheet data={data} />
+              </>
+            ) : (
+              <DocumentVerrouille />
+            )}
           </div>
           {/* La lettre de motivation est gratuite : elle sort toujours. */}
           <div className="print-only print-doc print-doc-lettre" aria-hidden>

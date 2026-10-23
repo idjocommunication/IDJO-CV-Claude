@@ -64,6 +64,15 @@ Tailwind CSS 3.4, Zustand, Zod, Prisma/PostgreSQL optionnel.
   local de `src/lib/assistant.ts` répond. Ne jamais envoyer le téléphone,
   l'e-mail ni la photo du candidat, et ne jamais insérer un texte généré sans
   action explicite de l'utilisateur.
+- **L'import de CV** (`src/components/editor/ImportCv.tsx`) est la seule
+  exception à cette règle : lire un CV, c'est lire ses coordonnées. Le CV
+  complet (image comprise) ne part chez Claude (`/api/import-cv`) qu'après un
+  écran de choix où l'utilisateur accepte explicitement l'envoi à Anthropic ;
+  l'autre option, la lecture sur l'appareil (`cv-parse.ts`, OCR tesseract.js
+  de `src/lib/ocr.ts`), ne fait rien sortir du navigateur. Ne jamais
+  supprimer cet écran ni envoyer un CV sans ce consentement. Les PDF exportés
+  ici portent leurs données dans un lien invisible (`src/lib/cv-embarque.ts`,
+  sans la photo) et se réimportent à l'identique, sans analyse.
 
 ## Vérification visuelle
 

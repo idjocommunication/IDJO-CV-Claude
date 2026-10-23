@@ -100,7 +100,7 @@ export function DownloadMenu({ current }: { current: 'cv' | 'lettre' }) {
         <button
           type="button"
           onClick={() => toPdf(current)}
-          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-l-full bg-ink pl-4 pr-3 text-[13px] font-semibold text-white transition-colors hover:bg-ink-soft sm:h-10 sm:pl-5"
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-l-full bg-ink pl-3 pr-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-ink-soft sm:h-10 sm:gap-2 sm:pl-5 sm:pr-3"
         >
           {autorise ? <Download size={15} /> : <Lock size={15} />}
           <span className="hidden sm:inline">Télécharger le </span>PDF

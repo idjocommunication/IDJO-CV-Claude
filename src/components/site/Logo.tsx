@@ -3,9 +3,13 @@ import { cn } from '@/lib/utils'
 export function Logo({
   className,
   inverted = false,
+  compact = false,
 }: {
   className?: string
   inverted?: boolean
+  /** Sur téléphone, seul le pictogramme : la barre d'outils de l'éditeur
+   *  a besoin de toute la largeur. */
+  compact?: boolean
 }) {
   return (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
@@ -22,6 +26,7 @@ export function Logo({
         className={cn(
           'text-[19px] font-extrabold tracking-[-0.02em]',
           inverted ? 'text-white' : 'text-ink',
+          compact && 'hidden sm:inline',
         )}
       >
         IDJÔ<span className={inverted ? 'text-white/60' : 'text-ink-muted'}> CV</span>

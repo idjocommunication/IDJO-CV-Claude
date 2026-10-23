@@ -12,6 +12,9 @@
  * Charger ce module dans un worker suffit : la classe `WorkerMessageHandler`
  * se branche d'elle-même sur les messages de la page.
  */
+// Les compléments pour Safari doivent passer avant pdf.js : les imports
+// s'évaluent dans l'ordre.
+import '@/lib/compat-navigateur'
 import { WorkerMessageHandler } from 'pdfjs-dist/legacy/build/pdf.worker.mjs'
 
 // Référence explicite : l'import ne doit pas être écarté comme inutilisé.

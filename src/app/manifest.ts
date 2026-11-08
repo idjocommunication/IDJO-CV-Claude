@@ -16,11 +16,16 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     display: 'standalone',
     background_color: '#FFFFFF',
-    theme_color: '#0A0A0A',
+    theme_color: '#04122B',
     lang: 'fr',
     categories: ['business', 'productivity'],
+    // Le « ô » du logo, blanc sur bleu nuit. Les PNG servent aux écrans
+    // d'accueil qui ne lisent pas le SVG ; la version « maskable » garde le
+    // signe dans la zone que les lanceurs Android ne rognent jamais.
     icons: [
       { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' },
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   }
 }

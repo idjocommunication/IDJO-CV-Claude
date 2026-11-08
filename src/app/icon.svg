@@ -1,4 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" rx="14" fill="#0A0A0A"/>
-  <text x="32" y="41" font-family="Impact, Haettenschweiler, sans-serif" font-size="28" fill="#FFFFFF" text-anchor="middle">IC</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><rect width="64" height="64" rx="14" fill="#04122B"/><path fill="#FFFFFF" fill-rule="evenodd" transform="translate(-50.938 -11.696) scale(0.06551)" d="M975 757a291 291 0 1 0 582 0a291 291 0 1 0 -582 0zM1096 757a170 170 0 1 1 340 0a170 170 0 1 1 -340 0zM1204 757a62 62 0 1 0 124 0a62 62 0 1 0 -124 0zM1135 404L1302 286L1475 404L1338 404L1302 380L1269 404z"/></svg>

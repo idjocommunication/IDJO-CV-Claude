@@ -107,6 +107,33 @@
   overflow: hidden;
 }
 
+/* Logo : les formes vectorielles servent de masque sur la couleur du texte
+   (voir src/components/site/Logo.tsx). Les proportions sont celles des
+   fichiers SVG de public/. */
+.logo-idjo-cv,
+.logo-o {
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  /* En mode contraste élevé, Windows remplacerait la couleur de fond. */
+  forced-color-adjust: none;
+}
+
+.logo-idjo-cv {
+  aspect-ratio: 2214 / 762;
+  -webkit-mask-image: url('/logo-idjo-cv.svg');
+  mask-image: url('/logo-idjo-cv.svg');
+}
+
+.logo-o {
+  aspect-ratio: 1;
+  -webkit-mask-image: url('/logo-o.svg');
+  mask-image: url('/logo-o.svg');
+}
+
 /* Copie destinée à l'impression : rendue hors écran, seule visible en PDF. */
 .print-only {
   display: none;
